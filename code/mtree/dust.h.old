@@ -1,0 +1,63 @@
+#ifndef DUST_H
+#define DUST_H
+
+#include "dataset.h"
+#include "randomvariable.h"
+
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_monte.h>
+#include <gsl/gsl_monte_plain.h>
+#include <gsl/gsl_monte_miser.h>
+#include <gsl/gsl_monte_vegas.h>
+//http://www.gnu.org/software/gsl/manual/html_node/Monte-Carlo-Examples.html
+//http://www.mathkb.com/Uwe/Forum.aspx/math/13794/Help-Upper-Bound-for-an-integral
+
+#include <map>
+
+
+#define INTEGRATION_SAMPLES 50000
+
+#define STDDEV_STEP 0.1
+#define STDDEV_BEGIN 0.0
+#define STDDEV_END 1.0
+#define STDDEV_STEPS (int)(((STDDEV_END-STDDEV_BEGIN)/STDDEV_STEP)+1)
+
+#define DISTANCE_STEP 0.01
+#define DISTANCE_BEGIN 0.01
+#define DISTANCE_END 1.0
+#define DISTANCE_STEPS ((int)((DISTANCE_END-DISTANCE_BEGIN)/DISTANCE_STEP)+10)
+
+struct tuple_t {
+    double x;
+    double y;
+    double m;
+};
+
+class DUST
+{
+public:
+    ~DUST();
+    DUST(const Dataset &_dataset, const char *lookUpTablesPathname = NULL);
+
+    //
+    double distance(const TS &query, const UTS &uts);
+    double integrate(double (*f)(double * x_array, size_t dim, void * params), void *params);
+    void init();
+    void readLookUpTables(const char *lookUpTablesPathname);
+    double dust(RandomVariable &x, RandomVariable &y);
+    double phi(RandomVariable &x, RandomVariable &y);
+    void buildFDustTables(const char *pathname);
+    void init_randomvar(const UTS &uts, int i, RandomVariable &y);
+
+    int classify(const TS &query);
+
+    //
+    const Dataset &dataset; // dataset reference
+    bool lookupTablesAvailable;
+    double lookuptables[3][STDDEV_STEPS+1][STDDEV_STEPS+1][DISTANCE_STEPS+1];
+    gsl_rng *r_rng;
+    const gsl_rng_type *T;
+
+};
+
+#endif // DUST_H

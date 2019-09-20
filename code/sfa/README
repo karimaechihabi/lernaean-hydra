@@ -1,0 +1,55 @@
+
+This is the README file for a  C implementation of the the SFA Trie [1][2],
+that has been modified to support whole sequence matching.
+
+Developed by Karima Echihabi on 18/12/2016
+Copyright 2016 Paris Descartes University. All rights reserved.
+
+Based on isax code written by Kostas Zoumpatianos on 3/12/12.
+Copyright 2012 University of Trento. All rights reserved.
+
+[1] P. Schäfer and M. Högqvist. Sfa: A symbolic fourier approximation
+and index for similarity search in high dimensional datasets. In Proceedings
+of the 15th International Conference on Extending Database Technology,
+EDBT ’12, pages 516–527, New York, NY, USA, 2012. ACM
+[2] https://github.com/patrickzib/SFA 
+
+----------------------------DEPENDENCIES---------------------------
+Install fftw (http://www.fftw.org/index.html)
+Use the enable-float flag with ./configure to support single precision values
+(./configure --enable-float --enable-type-prefix)
+
+-------------------DO ONCE TO SET UP ENVIRONMENT--------------------
+./autogen.sh
+
+
+-----------------------------COMPILE-------------------------------
+./configure
+make
+
+------------------------------RUN----------------------------------
+./sfa --help
+
+
+----------------------------SAMPLE COMMAND-------------------------
+
+Build the trie
+./sfa --dataset $HOME/data/data_size1B_seed1184_len256_znorm.bin --dataset-size 100000000
+      --buffer-size 61440 --leaf-size 100000 --trie-path /$HOME/index/ --ascii-input 0
+      --mode 0 --timeseries-size 256 --sample-size 5921370
+
+Run the queries
+./sfa --queries $HOME/data/queries_size100K_seed14784_len256_znorm.bin --queries-size 100
+      --dataset $HOME/data/data_size1B_seed1184_len256_znorm.bin --dataset-size 100000000
+      --buffer-size 61440 --leaf-size 100000 --trie-path /$HOME/index/ --ascii-input 0
+      --mode 1 --timeseries-size 256 --sample-size 5921370
+
+
+
+------------------------------CLEAN--------------------------------
+
+clean executables: make clean
+
+clean environment: ./clean.sh
+
+

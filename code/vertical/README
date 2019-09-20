@@ -1,0 +1,42 @@
+
+This is the README file for a  C implementation of the Stepwise algorithm [1],
+developed by Shrikant Kashyap and Panagiotis Karras.
+
+that has been modified to support whole sequence matching and non-batch query
+processing.
+
+Modified by Karima Echihabi on 03/11/2017 (karima.echihabi@gmail.com)
+to support  whole sequence matching and non-batch query
+processing.
+
+[1] Shrikant Kashyap and Panagiotis Karras. 2011. Scalable kNN search on vertically
+    stored time series. In Proceedings of the 17th ACM SIGKDD
+    international conference on Knowledge discovery and data mining (KDD '11).
+    ACM, New York, NY, USA, 1334-1342.
+
+
+----------------------------DEPENDENCIES---------------------------
+Install fftw (http://www.fftw.org/index.html)
+Use the enable-float flag with ./configure to support single precision values
+(./configure --enable-float --enable-type-prefix)
+
+-----------------------------COMPILE-------------------------------
+make
+
+------------------------------RUN----------------------------------
+./wavelets_karras
+
+
+----------------------------SAMPLE COMMAND-------------------------
+./wavelets_karras ts_length ts_count dataset_file.bin dataset_directory
+           output_directory
+
+The code looks for a query file in the output directory under the name query_dataset_file.bin
+
+------------------------------CLEAN--------------------------------
+
+clean executables: make clean
+
+
+
+

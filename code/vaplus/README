@@ -1,0 +1,55 @@
+
+This is the README file for a  C implementation of the VA+file algorithm [1].
+The original version developed by Hakan Ferhatosmanoglu was in Matlab.
+
+Developed by Karima Echihabi on 03/11/2017 (karima.echihabi@gmail.com)
+Copyright 2017 Paris Descartes University. All rights reserved.
+
+
+[1] H. Ferhatosmanoglu, E. Tuncel, D. Agrawal, and A. E.
+    Abbadi. Vector approximation based indexing for non-
+    uniform high dimensional data sets. In In Proceedings of
+    the 9th ACM Int. Conf. on Information and Knowledge
+    Management, pages 202–209. ACM Press, 2000.
+
+
+----------------------------DEPENDENCIES---------------------------
+Install fftw (http://www.fftw.org/index.html)
+Use the enable-float flag with ./configure to support single precision values
+(./configure --enable-float --enable-type-prefix)
+
+-------------------DO ONCE TO SET UP ENVIRONMENT--------------------
+./autogen.sh
+
+
+-----------------------------COMPILE-------------------------------
+./configure
+make
+
+------------------------------RUN----------------------------------
+./vaplus --help
+
+
+----------------------------SAMPLE COMMAND-------------------------
+--Build the va+file
+
+	bin/vaplus --dataset $HOME/data/data_size1M_seed1184_len256_znorm.bin
+	           --dataset-size 1000000 --index-path $HOME/index/ --mode 0
+		   --ascii-input 0 --timeseries-size 256  --buffer-size 5400
+
+--Run queries
+
+	bin/vaplus --dataset $HOME/data/data_size1M_seed1184_len256_znorm.bin
+        	   --dataset-size 1000000
+		   --queries $HOME/data/queries_size100_seed14784_len256_znorm.bin
+		   --queries-size 5 --index-path $HOME/index/ --mode 0
+		   --ascii-input 0 --timeseries-size 256 --buffer-size 5400
+
+------------------------------CLEAN--------------------------------
+
+clean executables: make clean
+
+clean environment: ./clean.sh
+
+
+

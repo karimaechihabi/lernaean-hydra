@@ -1,0 +1,38 @@
+
+This is the README file for the C implementation of the UCR Suite [1].
+
+This version supports only whole matching queries based on the
+Euclidean distance.
+
+This C version was developed by Karima Echihabi on 18/12/2016
+Copyright 2016 Paris Descartes University. All rights reserved.
+
+[1] T. Rakthanmanon, B. J. L. Campana, A. Mueen, G. E. A. P. A. Batista,
+M. B. Westover, Q. Zhu, J. Zakaria, and E. J. Keogh. Searching and mining
+trillions of time series subsequences under dynamic time warping.
+In Q. Yang, D. Agarwal, and J. Pei, editors, KDD, pages 262–270. ACM, 2012.
+
+-------------------DO ONCE TO SET UP ENVIRONMENT--------------------
+./autogen.sh
+
+
+-----------------------------COMPILE-------------------------------
+./configure
+make
+
+------------------------------RUN----------------------------------
+./serial --help
+
+
+----------------------------SAMPLE COMMAND-------------------------
+./serial --queries $HOME/data/queries_size100K_seed14784_len256_znorm.bin --queries-size 100
+         --dataset $HOME/data/data_size1B_seed1184_len256_znorm.bin --dataset-size 25000000
+	 --timeseries-size 256
+
+------------------------------CLEAN----------------------------------
+
+clean executables: make clean
+
+clean environment: ./clean.sh
+
+

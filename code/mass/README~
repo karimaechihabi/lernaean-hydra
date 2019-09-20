@@ -1,0 +1,40 @@
+
+This is the README file for a  C implementation of the MASS algorithm [1][2],
+that has been modified to support whole sequence matching.
+
+Developed by Karima Echihabi on 03/11/2017
+Copyright 2016 Paris Descartes University. All rights reserved.
+
+Based on the MASS implementation by Michele Linardi on 01/01/16.
+Copyright 2016 University of Trento. All rights reserved.
+
+
+[1] C.-C. M. Yeh, Y. Zhu, L. Ulanova, N. Begum, Y. Ding, H. A. Dau,
+Z. Zimmerman, D. F. Silva, A. Mueen, and E. Keogh. Time series joins,
+motifs, discords and shapelets: a unifying view that exploits the matrix pro-
+file. Data Mining and Knowledge Discovery, pages 1–41,2017
+[2] https://www.cs.unm.edu/~mueen/FastestSimilaritySearch.html
+
+----------------------------DEPENDENCIES---------------------------
+Install fftw (http://www.fftw.org/index.html)
+Use the enable-float flag with ./configure to support single precision values
+(./configure --enable-float)
+
+-------------------DO ONCE TO SET UP ENVIRONMENT--------------------
+./autogen.sh
+
+
+-----------------------------COMPILE-------------------------------
+./configure
+make
+
+------------------------------RUN----------------------------------
+./serial --help
+
+------------------------------CLEAN----------------------------------
+
+clean executables: make clean
+
+clean environment: ./clean.sh
+
+

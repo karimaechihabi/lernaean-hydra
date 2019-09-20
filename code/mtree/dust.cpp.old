@@ -1,0 +1,533 @@
+#include "dust.h"
+#include "common.h"
+#include <math.h>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+
+#include <boost/math/distributions/uniform.hpp> // for uniform distribution
+#include <boost/math/distributions/normal.hpp> // for normal distribution
+#include <boost/math/distributions/exponential.hpp> // for normal distribution
+
+using namespace boost;
+using namespace boost::math;
+using namespace std;
+#define NOTNANINF(x) ( !(std::isnan(x)) && !(std::isinf(x)))
+
+//#define NORMALNORMAL(sigma) ( 2.0*(sigma)*(1.0+(sigma)*(sigma)))
+
+#define VERYSMALL 1E-20
+#define SQRT3 1.73205081
+
+// come range_value devo assumere un intervallo più ampio perchè altrimenti per via dell'errore
+// taglio erroneamente le probabilità. vedi formule 6,7 in paper. essendo la probabilità uniforme,
+// il risultato finale non cambia.
+#define RANGE_VALUE SQRT3*10
+
+double integration_interval [ ] = { -16,+16};
+
+inline double clean_probability(double p) {
+
+    //    assert(p <= 1.1 && p >= -0.1);
+
+    
+    // commentata. verificare che vada ancora...
+    // if(p >= 1)
+    //  p = 1;
+    if(p <= 0)
+        p = 0;
+    return p;
+}
+
+double myPDF(int distribution, double mean, double stddev, double v) {
+    double ret = -1.0;
+
+    if(stddev == 0)
+        stddev = 0.2; // normal, ...not defined for stddev = 0
+
+
+    assert(mean == 0);
+
+    switch(distribution) {
+    case RANDVAR_UNIFORM:
+    {
+        double b = SQRT3 * stddev;
+        ret = boost::math::pdf(boost::math::uniform_distribution<double>(-b, b), v);
+    }
+        break;
+    case RANDVAR_NORMAL:
+    {
+        ret = boost::math::pdf(boost::math::normal_distribution<double>(0,1), v/stddev);
+    }
+        break;
+    case RANDVAR_EXP:
+    {
+        ret = boost::math::pdf(boost::math::exponential_distribution<double>(1.0 / stddev), ABS(v));
+    }
+        break;
+    default:
+        assert("WTF!?" && 0);
+    }
+
+    return ret;
+}
+
+
+double f1 (double *k, size_t dim, void *params) {
+    RandomVariable **pair = (RandomVariable **)params;
+
+    assert(dim == 1);
+    assert(pair[0]->stddev >= 0);
+
+    double x = pair[0]->observation;
+    double v = k[0];
+
+    uniform valueUniform(-RANGE_VALUE, RANGE_VALUE);
+    double ret = myPDF(pair[0]->distribution, 0, pair[0]->stddev, x-v)*pdf(valueUniform, v);
+    assert(NOTNANINF(ret));
+    return ret;
+}
+
+
+
+double f2 (double *k, size_t dim, void *params) {
+    RandomVariable **pair = (RandomVariable **)params;
+
+    assert(dim == 1);
+    assert(pair[1]->stddev >= 0);
+
+    double y = pair[1]->observation;
+    double v = k[0];
+
+    uniform valueUniform(-RANGE_VALUE, RANGE_VALUE);
+    double ret = myPDF(pair[1]->distribution, 0, pair[1]->stddev, y-v)*pdf(valueUniform, v);
+    assert(NOTNANINF(ret));
+    return ret;
+}
+
+
+double f3 (double *k, size_t dim, void *params) {
+
+    double *fp = (double *)params;
+
+    assert(dim == 1);
+
+    double int1 = fp[0];
+    double int2 = fp[1];
+    int xdistrib = fp[2];
+    double x = fp[3] - 0.1;
+    double xstddev = fp[4];
+    double ydistrib = fp[5];
+    double y = fp[6] + 0.1;
+    double ystddev = fp[7];
+    double z = k[0];
+
+    uniform valueUniform(-RANGE_VALUE, RANGE_VALUE);
+    // uniform valueUniformX(-SQRT3*xstddev*10, SQRT3*xstddev*10);
+    // uniform valueUniformY(-SQRT3*ystddev*10, SQRT3*ystddev*10);
+
+    assert(xstddev >= 0);
+    assert(ystddev >= 0);
+
+    assert(int1 != 0 && int2 != 0);
+
+
+    //    double pdf1 = myPDF(xdistrib, 0, xstddev, x-z);
+    //    double pdf2 = myPDF(ydistrib, 0, ystddev, y-z);
+    //    double p1 = pdf(valueUniformX, x-z) * pdf(valueUniform, z) / int1;
+    //    double p2 = pdf(valueUniformX, y-z) * pdf(valueUniform, z) / int2;
+
+    long double p1, p2;
+
+    if(xdistrib == RANDVAR_UNIFORM) {
+
+        double xadjust = 0;
+        double yadjust = 0;
+
+        if(ABS(x-z) > xstddev * SQRT3) {
+            xadjust = myPDF(xdistrib, 0, xstddev, 0) * (1+boost::math::erf(-(ABS(x-z) - xstddev * SQRT3)));
+        }
+        if(ABS(y-z) > ystddev * SQRT3) {
+            yadjust = myPDF(ydistrib, 0, ystddev, 0) * (1+boost::math::erf(-(ABS(y-z) - ystddev * SQRT3)));
+        }
+
+        double pdfx = myPDF(xdistrib, 0, xstddev, x-z)+xadjust;
+        double pdfy = myPDF(ydistrib, 0, ystddev, y-z)+yadjust;
+
+        //cerr << "XXX " << ABS(x-z) << " " << pdfx << endl;
+        //      cerr << "YYY " << ABS(y-z) << " " << pdfy << endl;
+
+        p1 = pdfx * pdf(valueUniform, z) / int1;
+        p2 = pdfy * pdf(valueUniform, z) / int2;
+    } else {
+        p1 = myPDF(xdistrib, 0, xstddev, x-z) * pdf(valueUniform, z) / int1;
+        p2 = myPDF(ydistrib, 0, ystddev, y-z) * pdf(valueUniform, z) / int2;
+    }
+
+    long double ret = p1 * p2;
+
+    if(false) {
+        if(ret == 0) {
+            cerr << "ret:" << ret << " int1:" << int1 << " int2:" << int2 << " pdfxz:";
+            cerr << myPDF(xdistrib, 0, xstddev, x-z) << " pdfz:" << pdf(valueUniform, z) << " pdfyz:";
+            cerr << myPDF(ydistrib, 0, ystddev, y-z)  << " pdfz:" << pdf(valueUniform, z) << " x:";
+            cerr << x << " y:" << y << " z:" << z << "\n";
+        } else {
+            assert("ret was not zero" && 0);
+            cerr << "ret NOT ZERO\n";
+        }
+    }
+
+
+    assert(NOTNANINF(ret));
+    return ret;
+}
+
+
+double DUST::integrate(double (*f)(double * x_array, size_t dim, void * params), void *params) {
+    double xl[1] = { integration_interval[0]};
+    double xu[1] = { integration_interval[1]};
+    double result, error;
+
+    //http://www.gnu.org/software/gsl/
+    //http://www.gnu.org/software/gsl/manual/html_node/Monte-Carlo-Interface.html
+    //http://www.csse.uwa.edu.au/programming/gsl-1.0/gsl-ref_22.html#SEC351
+    //http://www.physics.ohio-state.edu/~ntg/780/gsl_examples/Monte_Carlo_test.cpp
+
+    //Bound by a Riemann sum
+    //http://www.tricki.org/article/Bound_by_a_Riemann_sum
+
+    gsl_rng *r = gsl_rng_alloc (T);
+    gsl_monte_function G = { f, 1, params};
+
+    gsl_rng_env_setup ();
+    size_t calls = INTEGRATION_SAMPLES;
+
+    gsl_monte_plain_state *s = gsl_monte_plain_alloc (1);
+    gsl_monte_plain_integrate (&G, xl, xu, 1, calls, r_rng, s, &result, &error);
+    gsl_monte_plain_free (s);
+    gsl_rng_free(r);
+
+    assert(NOTNANINF(result));
+    return result;
+}
+
+void DUST::init() {
+    T = gsl_rng_default;
+    r_rng = gsl_rng_alloc (T);
+    lookupTablesAvailable = false;
+}
+
+
+
+double DUST::phi(RandomVariable &x, RandomVariable &y) {
+    RandomVariable *pair[2];
+    pair[0] = &x;
+    pair[1] = &y;
+
+    integration_interval[0] = -16;
+    integration_interval[1] = +16;
+
+    double int1 = clean_probability(integrate(f1, (void *)pair));
+    double int2 = clean_probability(integrate(f2, (void *)pair));
+
+    assert(int1 <= 1);
+
+    if(int1 == 0) {
+        int1 = VERYSMALL;
+    }
+
+    if(int2 == 0) {
+        int2 = VERYSMALL;
+    }
+
+    assert(int1 != 0 && int2 != 0);
+
+    double params[2+6] = {int1, int2, x.distribution, x.observation, x.stddev, y.distribution, y.observation, y.stddev};
+
+
+    double int3 = integrate(f3, (void *)params);
+
+
+    int3 = clean_probability(int3);
+
+    if(false && int3 == 0) {
+        cout << "f3 is 0000000000!!\n";
+        cerr << "xdistrib:" << x.distribution << " ydistrib:" << y.distribution << endl;
+        cerr << "int1:" << int1 << " int2:" << int2 << " int3:" << int3 << endl;
+
+    }
+
+    assert(NOTNANINF(int3));
+
+    //assert(int1 <= 1 && int2 <= 1 && int3 <= 1);
+
+    return int3;
+}
+
+
+DUST::~DUST(){
+    gsl_rng_free(r_rng);
+}
+
+
+DUST::DUST(const Dataset &_dataset, const char *lookUpTablesPathname) : dataset(_dataset) {
+    this->init();
+
+    if(lookUpTablesPathname) {
+        readLookUpTables(lookUpTablesPathname);
+    }
+}
+
+
+
+void DUST::init_randomvar(const UTS &uts, int i, RandomVariable &y) {
+    double mean = 0;
+    double stddev = 0;
+
+    for(int s = 0 ; s < dataset.m; s++) {
+        mean+= uts.samples[s].values[i];
+    }
+
+    mean /= ((double)dataset.m);
+
+
+    for(int s = 0 ; s < dataset.m; s++) {
+        stddev+= pow((uts.samples[s].values[i] - mean), 2);
+    }
+    stddev = sqrt( stddev / ((double)dataset.m));
+
+    y.observation = mean;
+    y.stddev = stddev;
+
+}
+
+double DUST::distance(const TS &query, const UTS &uts) {
+
+    double dist = 0;
+
+    RandomVariable x;
+    RandomVariable y;
+
+    x.distribution = RANDVAR_NORMAL;
+    x.stddev = 0;
+
+    y.distribution = RANDVAR_NORMAL;
+
+    for(int i = 0; i < dataset.n; i++ ) {
+        x.observation = query.values[i];
+        init_randomvar(uts, i, y);
+        dist += pow(dust(x, y), 2.0);
+    }
+
+    return dist;
+}
+
+
+
+
+
+
+int DUST::classify(const TS &query) {
+
+    double min_dist = 1e5;
+    int best_class = -1;
+
+    for(int uts_i = 0 ; uts_i < dataset.N ; uts_i++) {
+        const UTS &uts = dataset.utss[uts_i];
+
+        double min = distance(query, uts);
+
+        if(min <= min_dist) {
+            min_dist = min;
+            best_class = uts.class_label;
+        }
+
+
+    }
+
+    cout << "CLASSIFYDUST min_dist= " << min_dist << " best_class= " << best_class << "\n";
+    assert(best_class != -1);
+    return best_class;
+
+
+}
+
+
+
+
+
+void DUST::readLookUpTables(const char *lookUpTablesPathname) {
+
+
+    ifstream fin(lookUpTablesPathname);
+
+    if(fin == NULL) {
+        FATAL("unable to read lookuptables from file");
+    }
+
+    string line;
+
+
+    for(int i = 2; i < 2; i++)
+        for(int j0 = 0; j0 < STDDEV_STEPS; j0++)
+            for(int j1 = 0; j1 < STDDEV_STEPS; j1++)
+                for(int k = 0; k < DISTANCE_STEPS; k++)
+                    lookuptables[i][j0][j1][k] = -1;
+
+
+    LOG << "reading lookup file " << lookUpTablesPathname << "\n";
+
+    while(getline(fin, line)) {
+     //      cout << "line:" << line << endl;
+        stringstream lineStream(line);
+
+        int distribution;
+        double stddev0,stddev1, distance, dustdistance;
+
+        lineStream >> distribution;
+        lineStream >> stddev0;
+        lineStream >> stddev1;
+        lineStream >> distance;
+        lineStream >> dustdistance;
+
+      //  LOG << "distance " << distance << "\n";
+
+        assert(distribution >= 1 && distribution <= 3);
+        assert(stddev0 >= 0 && stddev0 <= STDDEV_END);
+        assert(stddev1 >= 0 && stddev1 <= STDDEV_END);
+        assert(distance >= 0 && distance <= DISTANCE_END);
+        assert(dustdistance >= 0);
+
+        int stddev0_offset = 0; // (int)round(stddev0 / STDDEV_STEP);
+        int stddev1_offset = (int)round(stddev1 / STDDEV_STEP);
+        int distance_offset = (int)round(distance / DISTANCE_STEP);
+
+    //    LOG << "distance " << distance << " distance_offset " << distance_offset << "\n";
+
+      //  assert(stddev0_offset >= 0 && stddev0_offset < STDDEV_STEPS);
+        assert(stddev1_offset >= 0 && stddev1_offset < STDDEV_STEPS);
+        assert(distance_offset >= 0 && distance_offset < DISTANCE_STEPS);
+
+        lookuptables[distribution-1][stddev0_offset][stddev1_offset][distance_offset] = dustdistance;
+    }
+
+    fin.close();
+
+
+    for(int i = 0; i < 3; i++)
+        for(int j0 = 0; j0 < STDDEV_STEPS; j0++)
+            for(int j1 = 0; j1 < STDDEV_STEPS; j1++)
+                for(int k = 0; k < DISTANCE_STEPS; k++)
+                    assert(lookuptables[i][j0][j1][k] >= 0); // this ensures that all needed values are present.
+
+
+    lookupTablesAvailable = true;
+
+    //    double lookuptables[3][10][800];
+
+}
+
+
+double DUST::dust(RandomVariable &x, RandomVariable &y) {
+
+    if(lookupTablesAvailable) {
+
+           assert(x.distribution == y.distribution);
+        //   assert(x.stddev == y.stddev);
+
+           //LOG << "xxx " << abs(x.observation - y.observation) << "\n";
+
+           double distance = ceil(ABS(x.observation - y.observation) * (1/DISTANCE_STEP)) / (1/DISTANCE_STEP);
+
+           if(distance < DISTANCE_BEGIN)
+               distance = DISTANCE_BEGIN;
+
+           if(distance > DISTANCE_END)
+               distance = DISTANCE_END;
+
+           if(y.stddev < STDDEV_BEGIN)
+               y.stddev = STDDEV_BEGIN;
+
+           if(y.stddev > STDDEV_END)
+                   y.stddev = STDDEV_END;
+
+           assert(x.distribution >= 1 && x.distribution <= 3);
+           assert(x.stddev >= STDDEV_BEGIN && x.stddev <= STDDEV_END);
+
+       //    LOG << "distance " << distance << "\n";
+
+           assert(distance >= DISTANCE_BEGIN && distance <= DISTANCE_END);
+
+           int stddev0_offset = 0 ; // (int)round(x.stddev / STDDEV_STEP);
+           int stddev1_offset = (int)round(y.stddev / STDDEV_STEP);
+           int distance_offset = (int)(distance / DISTANCE_STEP);
+
+        //   assert(stddev0_offset >= 0 && stddev0_offset < STDDEV_STEPS);
+
+
+           assert(stddev1_offset >= 0 && stddev1_offset < STDDEV_STEPS);
+           assert(distance_offset >= 0 && distance_offset < DISTANCE_STEPS);
+
+           double dustdist = lookuptables[x.distribution-1][stddev0_offset][stddev1_offset][distance_offset];
+
+           if(dustdist < 0) {
+               cerr << "dustdist negative: " << dustdist << " " << x.distribution <<  endl;
+           }
+
+           assert(dustdist >= 0);
+           return dustdist;
+       }
+
+    double distance = -log10(phi(x,y));
+
+    assert(NOTNANINF(distance));
+
+    if(distance < 0)
+        distance = 0;
+
+    distance = sqrt(distance);
+
+    assert(NOTNANINF(distance));
+    return distance;
+}
+
+
+void DUST::buildFDustTables(const char *pathname) {
+
+    ofstream fout(pathname);
+
+    if(!fout) {
+        FATAL("error opening outputfile ");
+    }
+
+    fout.precision(4);
+
+    double stddev0 = 0.00;
+
+    //for(int distribution = 1; distribution <= 3; distribution++) {
+    for(int distribution = 2; distribution <= 2; distribution++) {
+        // for(double stddev0 = STDDEV_BEGIN; stddev0 < STDDEV_END+STDDEV_STEP/2.0; stddev0+=STDDEV_STEP) {
+        for(double stddev1 = stddev0; stddev1 < STDDEV_END+STDDEV_STEP/2.0; stddev1+=STDDEV_STEP) {
+            for(double distance = DISTANCE_BEGIN; distance < DISTANCE_END+DISTANCE_STEP/2.0; distance+= DISTANCE_STEP) {
+
+                RandomVariable x = RandomVariable(distribution, 0,0,stddev0);
+                RandomVariable y = RandomVariable(distribution, distance,distance,stddev1);
+
+                double d;
+
+                //                if(stddev0 != stddev1) // XXX disabilito...
+                //                  d = 0;
+                //            else
+                d = dust(x, y);
+
+                cerr << "distribution:" << distribution << " stddev0:" << stddev0 << " stddev1:" << stddev1 << " distance:" << distance << " dustdistance:" << d << endl;
+
+                fout << distribution << " " << stddev0 << " " << stddev1 <<  " " << distance << " " << d << "\n";
+                fout << distribution << " " << stddev1 << " " << stddev0 <<  " " << distance << " " << d << "\n";
+            }
+            //  }
+        }
+    }
+}
+

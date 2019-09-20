@@ -1,0 +1,3 @@
+rand48.lo: rand48.cc /usr/include/stdc-predef.h
+
+/usr/include/stdc-predef.h:
