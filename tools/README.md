@@ -7,8 +7,10 @@ The generator produces synthetic data series as random-walks
 (i.e., cumulative sums) of steps that follow a Gaussian distribution
 (0,1).
 
-## Usage
+## Compile
 make
+
+## Run
 ./generator --help
 
 ## Example
