@@ -1,0 +1,52 @@
+
+This is the README file for a  C implementation of the iSAX2+ algorithm [1].
+The original version developed by  was in C#.
+
+Developed by Karima Echihabi on 01/08/2017 (karima.echihabi@gmail.com)
+Copyright 2017 Paris Descartes University. All rights reserved.
+
+Based on code Developed by Kostas Zoumpatianos  on 03/12/2012 
+Copyright 2012 University of Trento. All rights reserved.
+
+[1]  A. Camerra, J. Shieh, T. Palpanas, T. Rakthanmanon,
+     and E. J. Keogh. Beyond one billion time series: indexing
+     and mining very large time series collections with
+     isax2+. Knowl. Inf. Syst., 39(1):123–151, 2014.
+
+
+-------------------DO ONCE TO SET UP ENVIRONMENT--------------------
+./autogen.sh
+
+
+-----------------------------COMPILE-------------------------------
+./configure
+make
+
+------------------------------RUN----------------------------------
+./isax2plus --help
+
+
+----------------------------SAMPLE COMMAND-------------------------
+--Build the index
+
+	bin/isax2plus --dataset /home/karimae/data/synthetic/dataset.bin
+		      --dataset-size 100000000 --flush-limit 1000000
+		      --leaf-size 100000 --index-path /home/karimae/index/
+	      	      --sax-cardinality 8 --initial-lbl-size 100000 --timeseries-size 256
+
+-Run queries:
+
+     bin/isax2plus --queries /home/karimae/data/synthetic/queries.bin
+     	           --queries-size 100 --dataset-size 100000000
+		   --dataset /home/karimae/data/synthetic/dataset.bin
+		   --index-path /home/karimae/index/ --flush-limit 1000000
+		   --leaf-size 100000 --sax-cardinality 8 --initial-lbl-size 100000
+		   --timeseries-size 256 --use-index
+
+------------------------------CLEAN--------------------------------
+
+clean executables: make clean
+
+clean environment: ./clean.sh
+
+

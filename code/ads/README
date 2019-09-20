@@ -1,0 +1,48 @@
+
+This is the README file for a  C implementation of the ADS algorithm [1].
+
+Developed by Kostas Zoumpatianos  on 03/10/2012 
+Copyright 2012 University of Trento. All rights reserved.
+
+Modified by Karima Echihabi on 01/08/2017 (karima.echihabi@gmail.com)
+Copyright 2017 Paris Descartes University. All rights reserved.
+
+
+[1]  K. Zoumpatianos, S. Idreos, and T. Palpanas. ADS:
+     the adaptive data series index. VLDBJ, 25(6):843–866,
+     2016.
+
+
+-------------------DO ONCE TO SET UP ENVIRONMENT--------------------
+./autogen.sh
+
+
+-----------------------------COMPILE-------------------------------
+./configure
+make
+
+------------------------------RUN----------------------------------
+./ads --help
+
+
+----------------------------SAMPLE COMMAND-------------------------
+--Build the index
+
+	bin/ads --dataset $HOME/data/data_size1M_seed1184_len256_znorm.bin
+	        --dataset-size 1000000 --flush-limit 1000 --index-path $HOME/index/
+		--timeseries-size 256
+-Run queries:
+
+        bin/ads --dataset $HOME/data/data_size1M_seed1184_len256_znorm.bin
+	        --dataset-size 1000000 --flush-limit 1000  --index-path index/
+		--timeseries-size 256
+		--queries $HOME/data/queries_size100_seed14784_len256_znorm.bin --queries-size 5
+		--use-index
+
+------------------------------CLEAN--------------------------------
+
+clean executables: make clean
+
+clean environment: ./clean.sh
+
+
