@@ -11,7 +11,7 @@ about the dataset/queries used
 
 
 ## License
-This archive is free for use for academic purposes, but please reference it properly
+This archive is free for use for academic purposes, but if you use it, please reference it properly.
 
 ## Reference
 K. Echihabi, K. Zoumpatianos, T. Palpanas, and H. Benbrahim. The Lernaean Hydra of Data Series
