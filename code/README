@@ -1,0 +1,11 @@
+This is the code used for the Lernaean Hydra, an experimental evaluation
+of data series similarity search [1].
+
+[1] K. Echihabi, K. Zoumpatianos, T. Palpanas, and H. Benbrahim. The Lernaean
+    Hydra of Data Series Similarity Search: An Experimental Evaluation of the
+    State of the Art. PVLDB, 12(2):112–127, 2018.
+
+Each code has its own README with specific dependencies and sample instructions.
+
+All code bases have a dependency on jemalloc (http://jemalloc.net/).
+Please install jemalloc before proceeding.

@@ -1,0 +1,11 @@
+#Synthetic Datasets
+
+The synthetic datasets were generated using the generator supplied 
+in the tools directory.
+
+##Seeds
+
+The seeds used for the datasets and queries are 1184 and 14784
+respectively.
+
+Please check the README for the generator for sample usage.
