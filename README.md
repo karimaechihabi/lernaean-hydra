@@ -17,3 +17,11 @@ This archive is free for use for academic purposes, but if you use it, please re
 K. Echihabi, K. Zoumpatianos, T. Palpanas, and H. Benbrahim. The Lernaean Hydra of Data Series
 Similarity Search: An Experimental Evaluation of the State of the Art. PVLDB, 12(2):112–127, 2018.
 
+## Disclaimer
+The code is provided, as is, without warranty of any kind. While we thoroughly tested all code bases, we 
+do not guarantee that they are exempt from bugs. If you encounter any issues with the code, please feel free 
+to send an email to Karima Echihabi (karima.echihabi@gmail.com). We will do our best to address your concerns
+but do not promise to resolve all issues.
+
+
+
