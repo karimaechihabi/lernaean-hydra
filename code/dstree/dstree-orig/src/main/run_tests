@@ -1,0 +1,15 @@
+mkdir out
+cd bin
+
+#Build the index
+#java -classpath ".:../lib/*" cn.edu.fudan.cs.dstree.Main dataset_path  dataset_size index_path/index_prefix maxleafsize 
+
+
+#Query the index
+#java -classpath ".:../lib/*" cn.edu.fudan.cs.dstree.Main index_path/index_prefix.idx_dyn_leafsize_1_datasize query_filename
+ 
+#Sample commands
+java -classpath ".:../lib/*" cn.edu.fudan.cs.dstree.Main "/home/karimae/data/synthetic/data_size100M_seed1184_len256_znorm.txt"  1000000 ../out/index_1M 100 
+java -classpath ".:../lib/*" cn.edu.fudan.cs.dstree.Main ../out/index_1M.idx_dyn_100_1_1000000  "/home/karimae/data/synthetic/queries_size100_seed14784_len256_znorm.txt"
+
+
