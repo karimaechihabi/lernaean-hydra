@@ -1,1 +1,0 @@
-/usr/bin/c++    -fopenmp -O2 -g -DNDEBUG    CMakeFiles/karima_example_c.dir/karima_example.c.o  -o ../bin/karima_example_c -rdynamic ../lib/libflann.so.1.9.1 -Wl,-whole-archive ../lib/libflann_s.a -Wl,-no-whole-archive -Wl,-rpath,/home/karimae/projects/dsseval_full_compact_journal/code/flann-proj/build2/lib: 

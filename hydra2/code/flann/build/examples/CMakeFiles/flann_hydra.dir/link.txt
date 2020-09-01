@@ -1,1 +1,0 @@
-/usr/bin/c++    -fopenmp -O2 -g -DNDEBUG    CMakeFiles/flann_hydra.dir/stats.c.o CMakeFiles/flann_hydra.dir/flann_hydra.c.o  -o ../bin/flann_hydra -rdynamic ../lib/libflann.so.1.9.1 -Wl,-whole-archive ../lib/libflann_s.a -Wl,-no-whole-archive -Wl,-rpath,/home/karimae/projects/dsseval_full_compact_journal/code/flann-proj/build/lib: 
