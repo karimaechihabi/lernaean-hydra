@@ -1,0 +1,1069 @@
+
+\vspace*{-0.3cm}
+
+\section{Similarity Search Primer}
+\label{sec:approaches}
+
+Similarity search methods aim at answering a query efficiently by limiting the number of data points accessed, %and/or the footprint of each data point, 
+while minimizing the I/O cost of accessing raw data on disk and the CPU cost %incurred 
+when comparing raw data to the query (e.g., Euclidean distance calculations). 
+These goals are achieved by exploiting summarization techniques, and using efficient data structures (e.g., an index) and search algorithms. 
+%These algorithms, which can return exact or approximate answers, process data either sequentially or using an index, and try to minimize two major costs: The IO cost of accessing the raw data on disk and the CPU cost incurred when comparing the raw data to the query (in our analysis, the comparisons are Euclidean distance calculations). 
+%and alternative approaches.
+Note that solutions based on sequential scans are geared to exact similarity search~\cite{conf/kdd/Mueen2012,code/Mueen2017}, and cannot support efficient approximate search, since all candidates are always read.
+
+%Sequential methods proceed in one step to answer a similarity search query. Each candidate is read sequentially from the raw data file and compared to the query. 
+%Particular optimizations can be applied to limit the number of these comparisons~\cite{conf/kdd/Mueen2012}. 
+%Some sequential methods work with the raw data in its original high-dimensional representation~\cite{conf/kdd/Mueen2012}, while others perform transformations on the raw data before comparing them to the query~\cite{code/Mueen2017}. 
+%Sequential methods are typically used for exact search, since approximate search still requires a pass over the whole dataset.
+%%ADD APPROXIMATE SEQUENTIAL METHODS IF ANY. EXHAUSTIVE vs NON EXHAUSTIVE\\
+%%ADC can be used for ANN exhaustive search: all candidates are quantized, query is not so the distance between the query and candidates is approximated using ADC distance: distance between query and all candidate codes. The best candidates are selected based on this approximate distance. No post processing step with the exact ed distance is performed. To speed up, non exhaustive search was proposed in IVFADC: An inverted file is built containing the inverted list corresponding to each code. Only some inverted lists are searched: those corresponding to the w neighbors of the query code.
+
+Answering a similarity query using an index typically involves two steps: a filtering step where the pre-built index is used to prune candidates and a refinement step where the surviving candidates are compared to the query in the original high dimensional space~\cite{conf/sigmod/Guttman1984,conf/vldb/Weber1998,conf/cikm/Hakan2000,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016,journal/edbt/Schafer2012,conf/vldb/Wang2013,conf/icmd/Beckmann1990,dpisax,ulisse}. Some exact~\cite{conf/icmd/Beckmann1990,journal/edbt/Schafer2012,conf/vldb/Weber1998,conf/cikm/Hakan2000} and approximate methods~\cite{conf/vldb/sun14,journal/pami/babenko15} first summarize the original data and then index these summarizations, while others tie together data reduction and indexing~\cite{journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016,conf/vldb/Wang2013}.  Some approximate methods return the candidates obtained in the filtering step~\cite{journal/pami/babenko15}. There also exist exact~\cite{conf/vldb/Ciaccia1997} and approximate~\cite{journal/corr/malkov16} methods that index high dimensional data directly.
+
+A variety of data structures exist for similarity search indexes, including trees~\cite{conf/sigmod/Guttman1984,conf/icmd/Beckmann1990,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016,conf/vldb/Wang2013,dpisax,ulisse,conf/vldb/sun14,journal/edbt/Schafer2012}, inverted indexes~\cite{journal/tpami/jegou2011,conf/icassp/jegou2011,journal/iccv/xia2013,journal/pami/babenko15}, filter files~\cite{conf/vldb/Weber1998,conf/cikm/Hakan2000,journal/vldb/Zoumpatianos2016}, hash tables~\cite{conf/stoc/indyk1998,conf/poccs/broder1997,conf/sigcg/datar2004,conf/stoc/charikar02,journal/nips/liu2004,conf/soda/panigrahy2006,journal/siamdm/motwani2007,conf/vldb/lv2007,conf/sigmod/gan2012,journal/atct/odonnell2014,qalsh} and graphs~\cite{conf/siam/arya1993,journal/apr/chavez2010,conf/sigkdd/aoyama2011,conf/iccv/wang2013,journal/is/malkov2014,conf/sisap/chavez2015,conf/icmm/jiang2016,journal/corr/malkov16}. 
+%
+%We note that all exact indexing methods depend on lower-bounding, since it allows indexes to prune the search space with the guarantee of no false dismissals~\cite{conf/sigmod/Faloutsos1994} (the DSTree index~\cite{conf/vldb/Wang2013} also supports an upper-bounding distance, but does not use it for similarity search).
+%Metric indexes (such as the M-tree~\cite{conf/vldb/Ciaccia1997}) additionally require the distance measure triangle inequality to hold.
+%Though, there exist (non-metric) indexes for data series that are based on distance measures that are not metrics~\cite{journal/kis/Keogh2005}. 
+%
+%we should say that some indexes index the whole data while others only a subset.
+%
+%In addition to indexing and sequential methods, there also exist alternative 
+There also exist multi-step approaches, e.g., Stepwise~\cite{conf/kdd/Karras2011}, that transform and organize data according to a hierarchy of resolutions. % with search including multiple intermediate filtering steps.
+% as levels are sequentially read one at a time.{ 	
+%Stepwise is such a method~\cite{conf/kdd/Karras2011}, relying on Euclidean distance, and lower- and upper-bounding distances. 
+
+Next, we outline the \emph{approximate} similarity search methods (refer also to Table~\ref{tab:multiprogram}) and their summarization techniques. 
+(\emph{Exact} methods are detailed in~\cite{journal/pvldb/echihabi2018}).
+%Table~\ref{tab:multiprogram} summarizes the properties of these algorithms. %, and Figure~\ref{fig:taxonomy} classifies them in a taxonomy according to our definitions of Section~\ref{sec:problem}.
+
+\begin{table*}[tb]
+		\caption{{\color{black}Similarity search methods used in this study} % (a comprehensive list of exact similarity search methods is included in our previous work~\cite{journal/pvldb/echihabi2018}). 
+		("$\bullet$" indicates our modifications to original methods). {\color{black}All methods support in-memory data, but only methods ticked in last column support disk-resident data.}}
+	{\small
+		\centering
+		%\hspace*{0.5cm}
+		\begin{tabular*}{\linewidth}{|*{11}{c|}} 
+			%    	\begin{tabular*}{\linewidth}{|*cc|c|c|c|c|c|c|c|c|c|c|}
+			\cline{3-11} 
+			\multicolumn{1}{c}{}& & \multicolumn{4}{c|}{Matching Accuracy}  & %\multicolumn{2}{c|}{Matching Type} &
+			 \multicolumn{2}{|c|}{Representation} & \multicolumn{3}{c|}{Implementation}\\    		
+			\cline{3-11} 
+			\multicolumn{1}{c}{}& & exact & ng-appr. & $\epsilon$-appr. & $\delta$-$\epsilon$-appr. & Raw & Reduced & Original  & New & Disk-resident Data \\    		
+			\cline{1-11}			 		 
+			%\multicolumn{1}{|c|}{\multirow{6}{*}{\rotatebox[origin=c]{90}{Indexes}}}
+			\cline{2-11}			 
+			\multicolumn{1}{|c|}{\multirow{2}{*}{{Graphs}}}
+			& \multicolumn{1}{c|}{HNSW} & 
+			& \cite{journal/corr/malkov16} &   &  & \checkmark & & C++ &  &\\	
+			\cline{2-11}			 	 
+			& \multicolumn{1}{c|}{NSG} & 
+			& \cite{nsg} &   &  & \checkmark & & C++ &  &\\	
+			\cline{1-11}			 
+			\multicolumn{1}{|c|}{\multirow{1}{*}{{Inv. Indexes}}}
+			& \multicolumn{1}{c|}{IMI} &  & \cite{journal/pami/babenko15,journal/tpami/ge2014}  &  &  &  & OPQ & C++  & &\checkmark\\	
+			\cline{1-11}			 	 
+			\multicolumn{1}{|c|}{\multirow{2}{*}{{LSH}}}
+			& \multicolumn{1}{c|}{QALSH} & &  & & \cite{qalsh} &   & Signatures & C++ & &\\	
+			\cline{2-11}			 		 			
+			& \multicolumn{1}{c|}{SRS} & & &  & \cite{conf/vldb/sun14} &  & Signatures & C++ & &\\				
+			\cline{1-11}			 
+			\multicolumn{1}{|c|}{\multirow{1}{*}{{Scans}}}
+			& \multicolumn{1}{c|}{VA+file} & {\cite{conf/cikm/Hakan2000}} & $\bullet$&$\bullet$&$\bullet$ & & {DFT} & {MATLAB} & {C} & \checkmark\\	
+			\cline{2-11}			 		 			
+			\cline{1-11}			 
+			\multicolumn{1}{|c|}{\multirow{4}{*}{{Trees}}}
+			& \multicolumn{1}{c|}{Flann} & & \cite{flann} & &  & \checkmark  &  & C++ & &\\	
+			\cline{2-11}			 
+			& \multicolumn{1}{c|}{DSTree} &\cite{conf/vldb/Wang2013} & \cite{conf/vldb/Wang2013} &$\bullet$&$\bullet$&  & EAPCA  & Java & C & \checkmark\\	
+			\cline{2-11}			 
+			& \multicolumn{1}{c|}{HD-index} & & \cite{hdindex} & &  &   & Hilbert keys & C++ & & \checkmark\\	
+			\cline{2-11}			 
+			& \multicolumn{1}{c|}{iSAX2+} & \cite{journal/kais/Camerra2014} & \cite{journal/kais/Camerra2014} &$\bullet$&$\bullet$&  &  iSAX &  C\# & C & \checkmark\\	
+			\cline{1-11}			 
+			%& \multicolumn{1}{|c|}{M-tree} & \cite{conf/vldb/Ciaccia1997}
+			%&  & \cite{conf/icde/Ciaccia2000} & \cite{conf/icde/Ciaccia2000} & \checkmark&  & \checkmark & & C++ &  \\	
+			%\cline{2-12}			 	 
+			%& \multicolumn{1}{|c|}{\color{red}{Faiss-IVF}} &  & \cite{journal/tpami/jegou2011,journal/tpami/ge2014}  &  &  & \checkmark&  &  & OPQ & C++  &\\	
+			%& \multicolumn{1}{|c|}{R*-tree} & \cite{conf/icmd/Beckmann1990} &  &  &  & \checkmark&  &  & PAA & C++  &\\	
+			%\cline{2-12}			 		 
+			%& \multicolumn{1}{|c|}{SFA trie} &\cite{journal/edbt/Schafer2012} & \cite{journal/edbt/Schafer2012} &  &  & \checkmark & \checkmark & & SFA & Java & C\\	
+			%\cline{2-12}			 		 
+			%& \multicolumn{1}{|c|}{LSH} & &  &  & \cite{conf/vldb/Gionis1999} & \checkmark&   &  \checkmark&  & C++& \\	
+			\cline{1-11}			 		 
+			%\multicolumn{1}{|c|}{\multirow{3}{*}{\rotatebox[origin=c]{90}{ Other }}}
+			%& \multicolumn{1}{|c|}{UCR Suite} & \cite{conf/kdd/Mueen2012} &  &  &  & $\bullet$& \checkmark &  \checkmark &  & C &\\	
+			%\cline{2-12}			 		 
+			%& \multicolumn{1}{|c|}{MASS} &\cite{journal/dmkd/Yeh2017} &  &   &  &$\bullet$& \checkmark &  & DFT &  C &\\	
+			%\cline{2-12}			 		 
+			%& \multicolumn{1}{|c|}{Stepwise} &\cite{conf/kdd/Karras2011} &  &  &  & \checkmark&  &   & DHWT & C & \\	
+			%\cline{1-12}			 		 
+		\end{tabular*}
+	} % font size
+	\label{tab:multiprogram}
+\end{table*}
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Summarization Techniques}
+
+\noindent\textbf{Random projections} (used by SRS~\cite{conf/vldb/sun14}) reduce the original high dimensional data into a lower dimensional space by multiplying it with a random matrix. 
+The Johnson-Lindenstrauss (JL) Lemma~\cite{conf/map/johnson84} guarantees that if the projected space has a large enough number of dimensions, there is a high probability that the pairwise distances are preserved, with a distortion not exceeding $(1+\epsilon)$.
+
+%The similarity search methods surveyed in this paper use the following summarization techniques: {\it Discrete Haar Wavelet Transforms} (DHWT)~\cite{conf/icde/Chan1999}, {\it Discrete Fourier Transforms} (DFT)~\cite{conf/fodo/Agrawal1993, conf/sigmod/Faloutsos1994, conf/sigmod/Rafiei1997, journal/corr/Rafiei1998}, {\it Symbolic Fourier Approximation} (SFA) \cite{journal/edbt/Schafer2012},  {\it Piecewise Aggregate Approximation} (PAA)~\cite{journal/kais/Keogh2001}, {\it Symbolic Aggregate approXimation} (SAX)~\cite{journal/dmkd/Lin2007}, {\it indexable Symbolic Aggregate Approximation} (iSAX)~\cite{conf/kdd/Shieh2008},  {\it Adaptive Piecewise Constant Approximation} (APCA)~\cite{journal/acds/Chakrabarti2002} and {\it Extended Adaptive Piecewise Approximation} (EAPCA)~\cite{conf/vldb/Wang2013}. 
+%Due to limited space, we will not describe these techniques in detail. 
+
+%Recall that a raw data series $DS$ of length $n$ consists of a sequence of $n$ real values, aka $n$ dimensions. To alleviate the curse of dimensionality, most methods rely on summarization techniques to reduce the high-dimensional raw data series $DS$ into a data series $DSS$ of lower dimension $l$. 
+
+%In order to get a deeper insight into the differences and similarities of the surveyed methods, we use an intuitive formulation to describe the dimensionality reduction techniques. Given a data series $DS$ of length $n$, and its summarization $DSS$ of length $l$, each dimension $C_i$ in $DSS$ such that $1 \leq i \leq l$ can be represented using a pair $(x_i, y_i)$ in $\mathbb{R}^2$. 
+
+%The {\it Discrete Haar Wavelet Transform} (DHWT)~\cite{conf/icde/Chan1999} uses the Haar wavelet decomposition to transform each data series $S$ into a multi-level hierarchical structure.
+%% called the Haar or error tree. The length of the input data series has to be an integer power of 2. of a length Each node in the tree contains a wavelet coefficient $c$. The coefficient at the root is the average of the values of $DS$. The average at each node of the tree is obtained by adding the node's coefficient $c$ to the average at the parent node $avg$ if the node is to the left or subtracting $c$ from $avg$ if the node is to the right. The original values of $DS$ are reconstructed by adding all the signed coefficients from root to leaf, where each value corresponds to one leaf. 
+%Resulting summarizations are composed of the first $l$ coefficients. 
+
+\noindent{\bf Piecewise Aggregate Approximation} (PAA)~\cite{journal/kais/Keogh2001} and {\it Adaptive Piecewise Constant Approximation} (APCA)~\cite{journal/acds/Chakrabarti2002} are segmentation techniques that approximate a data series $S$ using $l$ segments (of equal/arbitrary length, respectively). The approximation represents each segment with the mean value of its points. 
+%Each dimension $C_i$ of $DSS$ corresponds to the mean of the values of the $i$th segment in $DS$. The difference between PAA and APCA is that the former divides $DS$ into equi-length segments, whereas the segments in the latter can be of different lengths. Given two data series $DS$ and $DS'$, their approximations $DSS$ and $DSS'$ will have the same number of segments, so segments $C_i$ and $C'_i$ may have a different values for $x_i$ but will keep the same value for $y_i$.
+%For the PAA and APCA techniques, $x_i$ is the right endpoint of the $i$th segment of $DS$ and $y_i$ is the mean of the values in the $i$th segment of $DS$. 
+The {\it Extended APCA} (EAPCA)~\cite{conf/vldb/Wang2013} technique extends APCA by representing each segment with both the mean and the standard deviation.
+%$y_i$ and right endpoint of the $i$th segment $x_i$, it adds 
+%$y'_i$ of the $i$th segment. So, instead of the pair $(x_i, y_i)$, a triplet $(x_i,y_i,y'_i)$ is used to summarize each segment. The EAPCA segmentation is dynamic because the number, length and right endpoints of the segments can vary for different data series. We will detail this further in the next section when we describe the DSTree. 
+%It was pointed out in that the PAA and Haar wavelets
+\begin{comment}
+In order to get a deeper insight into the differences and similarities of the surveyed methods, in particular SFA, SAX and EAPCA, we devise an intuitive formulation which we will use to describe the DFT, PAA and APCA techniques. Given a data series $DS$ of length $n$, and its summarization $DSS$ of length $l$, each dimension $C_i$ in $DSS$ such that $1 \leq i \leq l$ can be mapped to a point $P_i(x_i, y_i)$ in $\mathbb{R}^2$. For DFT, $x_i$ is the endpoint of the $i$th unit segment on the x-axis and $y_i$ is the value of the $i$th fourier coefficient. For the PAA and APCA techniques, $x_i$ is the right endpoint of the $i$th segment of $DS$ and $y_i$ is the mean of the values in the $i$th segment of $DS$. 
+\end{comment}
+%the next definition extends the APCA definitions in 
+% into $DSS$, 
+
+\noindent\textbf{Quantization} 
+%The three summarization techniques below are all based on quantization, which 
+is a lossy compression process that maps a set of infinite numbers to a finite set of codewords that together constitute the codebook. 
+%We identify three main types of quantization: scalar, vector and product quantization. 
+A \emph{scalar} quantizer operates on the individual dimensions of a vector independently, whereas a \emph{vector} quantizer considers the vector as a whole (leveraging the correlation between dimensions~\cite{journal/tit/gray1998}). 
+The size $k$ of a codebook increases exponentially with the number of bits allocated for each code. 
+%A larger $k$ reduces information loss but requires larger storage and more processing time. 
+A \emph{product} quantizer~\cite{journal/tpami/jegou2011} 
+%has been proposed to address these limitations by splitting 
+splits
+the original vector of dimension $d$ into $m$ smaller subvectors, on which a lower-complexity vector quantization is performed. 
+The codebook then consists of the cartesian product of the codebooks of the $m$ subquantizers. 
+Scalar and vector quantization are special cases of product quantization, where $m$ is equal to $d$ and 1, respectively.
+
+%\begin{compactitem}
+%\item 
+\noindent(i) 
+{\it Optimized Product Quantization} (OPQ) (used by IMI~\cite{journal/tpami/ge2014}) improves the accuracy of the original product quantizer~\cite{journal/tpami/jegou2011} by adding a preprocessing step consisting of a linear transformation of the original vectors, which decorrelates the dimensions and optimizes space decomposition. {\color{black} A similar quantization technique, CK-Means, was proposed in~\cite{ck-means} but OPQ is considered the state-of-the-art~\cite{conf/CVPR/kalantidis2014,journal/ite/matsui2018}}. 
+
+%\item 
+\noindent(ii) 
+The {\it Symbolic Aggregate Approximation} (SAX)~\cite{conf/dmkd/LinKLC03} technique starts by transforming the data series into $l$ real values using PAA, and then applies a \emph{scalar} quantization technique to represent the PAA values 
+%$y_i$ as a discrete value instead of a real value for a smaller footprint. 
+using discrete symbols forming an alphabet of size $a$, called the cardinality of SAX. 
+The $l$ symbols form the SAX representation. %, which consists of only a few bits.
+%The discretization uses a heuristic to place $b$ breakpoints on the y-axis. If we draw lines parallel to the x-axis and passing through each of the breakpoints, we can see that the space is divided into $a$ regions where $a = b+1$. Each region is labeled using a discrete alphabet of size $a$, $a$ is also called the cardinality of SAX. The $y_i$ of each dimension $C_i$ is then mapped to a discrete value from this alphabet. 
+%The $i$SAX (indexable SAX)~\cite{conf/kdd/Shieh2008} representation extends SAX can have an arbitrary alphabet size for each segment.
+%. and each symbol is represented using the same cardinality, that is the alphabet size is fixed.
+The $i$SAX~\cite{conf/kdd/Shieh2008} technique %extends SAX to 
+allows comparisons of SAX representations of different cardinalities, which makes SAX indexable. 
+%An iSAX word is represented using a higher resolution by adding a breakpoint on the y-axis. The higher resolution word will also consist of $l$ symbols but the alphabet size available for a given symbol will be larger.  The maximum resolution of a SAX word uses the maximum alphabet size which is 256.
+
+%Similarly to SAX, the {\it Symbolic Fourier Approximation} (SFA) \cite{journal/edbt/Schafer2012} is also a symbolic approach. 
+%However, instead of PAA, it first transforms $S$ %into $DSS$ 
+%into $l$ DFT coefficients using FFT (or MFT for subsequence matching), then extends the discretization principle of SAX to support both equi-depth and equi-width binning, and to allow each dimension to have its own breakpoints. 
+%An SFA 
+%%word 
+%summary consists of $l$ symbols.
+
+%\item 
+\noindent(iii) \textit{The Karhunen-Lo\`{e}ve transform (KLT).} 
+The original VA+file method~\cite{conf/cikm/Hakan2000} first converts a data series $S$ of length $n$ using KLT into $n$ real values to de-correlate the data, then applies a \emph{scalar} quantizer to encode the real values as discrete symbols.
+%Each dimension is allocated a certain number of bits and decision intervals for each dimension are determined using the k-means algorithm. 
+As {\color{black}we} will explain in the next subsection, for efficiency considerations, we altered the VA+file to use the {\it Discrete Fourier Transform} (DFT) instead of KLT. DFT~\cite{conf/fodo/Agrawal1993,conf/sigmod/Faloutsos1994,conf/sigmod/Rafiei1997,journal/corr/Rafiei1998} 
+approximates a data series using $l$ frequency coefficients, 
+%transforms a data series $S$ into frequency coefficients.
+%%parts, without keeping information about time or space. Each part corresponds to one DFT coefficient. 
+%The data series $S$ is then approximated using a subset of $l$ coefficients. 
+%There exist different implementation algorithms for the DFT, we chose the Fast Fourier Transform (FFT) algorithm, since it is 
+% to compute DFT transforms since it is the most 
+and can be efficiently implemented with Fast Fourier Transform (FFT), which is 
+%which is 
+optimal for whole matching (alternatively, the MFT algorithm~\cite{conf/icdsp/Albrecht1997} is adapted to subsequence matching %as it computes the DFT transform using sliding windows).
+since it uses sliding windows).
+%In the case of both DHWT and DFT, for each dimension of $DSS$, $x_i$ is equal to $i$ and $y_i$ is the value of the $i$th coefficient. 
+%\end{compactitem}
+
+
+\begin{comment}
+\begin{figure}[tb]
+	\captionsetup{justification=centering}
+	\includegraphics[scale =0.70]{{summarizations}}
+	\caption{Summarizations}
+	%	}
+	\label{fig:summarizations}
+\end{figure}
+\end{comment}
+
+\begin{comment}
+    \begin{table*}[tb]
+    {\small
+    	\centering
+    	\hspace*{1cm}
+    	\begin{tabular*}{\linewidth}{|*{12}{c|}} 
+    		%    	\begin{tabular*}{\linewidth}{|*cc|c|c|c|c|c|c|c|c|c|c|}
+    		\cline{3-12} 
+    		\multicolumn{1}{c}{}& & \multicolumn{4}{c|}{Matching Accuracy}  & \multicolumn{2}{c|}{Matching Type} & \multicolumn{2}{|c|}{Representation} & \multicolumn{2}{c|}{Implementation}\\    		
+    		\cline{3-12} 
+    		\multicolumn{1}{c}{}& & exact & ng-appr. & $\epsilon$-appr. &$\delta$-$\epsilon$-appr. & Whole & Subseq. & Raw & Reduced & Original  & New \\    		
+    		\cline{1-12}			 		 
+    		%			\multirow{2}{*}{\rotatebox[origin=c]{90}{Indexes}} 
+    		\multicolumn{1}{|c|}{\multirow{5}{*}{\rotatebox[origin=c]{90}{Indexes}}}
+    		& \multicolumn{1}{|c|}{ADS+} &\cite{journal/vldb/Zoumpatianos2016} &\cite{journal/vldb/Zoumpatianos2016} &  &  &  \checkmark &  &  & iSAX &  C &\\	
+    		\cline{2-12}			 		 
+    		& \multicolumn{1}{|c|}{DSTree} &\cite{conf/vldb/Wang2013} & \cite{conf/vldb/Wang2013} &  &  &  \checkmark &   & & EAPCA & Java & C\\	
+    		\cline{2-12}			 		 
+    		& \multicolumn{1}{|c|}{iSAX2+} & \cite{journal/kais/Camerra2014} & \cite{journal/kais/Camerra2014} &  &  & \checkmark & &  &  iSAX &  C\# & C\\	
+    		\cline{2-12}			 	 
+    		& \multicolumn{1}{|c|}{M-tree} & \cite{conf/vldb/Ciaccia1997}
+    		 &  & \cite{conf/icde/Ciaccia2000} & \cite{conf/icde/Ciaccia2000} & \checkmark&  & \checkmark & & C++ &  \\	
+    		\cline{2-12}			 		 
+    		& \multicolumn{1}{|c|}{R*-tree} & \cite{conf/icmd/Beckmann1990} &  &  &  & \checkmark&  &  & PAA & C++  &\\	
+    		\cline{2-12}			 		 
+    		& \multicolumn{1}{|c|}{SFA trie} &\cite{journal/edbt/Schafer2012} & \cite{journal/edbt/Schafer2012} &  &  & \checkmark & \checkmark & & SFA & Java & C\\	
+    		\cline{2-12}			 		 
+    		& \multicolumn{1}{|c|}{LSH} & &  &  & \cite{conf/vldb/Gionis1999} & \checkmark&   &  \checkmark&  & C++& \\	
+    		\cline{1-12}			 		 
+    		\multicolumn{1}{|c|}{\multirow{3}{*}{\rotatebox[origin=c]{90}{ Other }}}
+    		& \multicolumn{1}{|c|}{UCR Suite} & \cite{conf/kdd/Mueen2012} &  &  &  &  & \checkmark &  \checkmark &  & C &\\	
+    		\cline{2-12}			 		 
+    		& \multicolumn{1}{|c|}{MASS} &\cite{journal/dmkd/Yeh2017} &  &   &  & \checkmark & \checkmark &  & DFT &  C &\\	
+    		\cline{2-12}			 		 
+    		& \multicolumn{1}{|c|}{Stepwise} &\cite{conf/kdd/Karras2011} &  &  &  & \checkmark&  &   & DHWT & C & \\	
+    		\cline{2-12}			 		 
+    		& \multicolumn{1}{|c|}{CSZ} & &  &  & \cite{conf/kdd/ColeSZ05}  & \checkmark &  &   & Sketches & Python & \\	
+	        \cline{1-12}			 		 
+    		\end{tabular*}
+    		} % font size
+    	\caption{Similarity Search Methods}
+    	\label{tab:multiprogram}
+    	\end{table*}
+    			
+\begin{figure}[!htb]
+	\captionsetup{justification=centering}
+	\includegraphics[width =\columnwidth]{{summarizations}}
+	\caption{Summarizations}
+	%	}
+	\label{fig:summarizations}
+\end{figure}
+
+\end{comment}
+
+\begin{comment}
+\begin{table*}[tb]
+	{\small
+		\centering
+		\hspace*{1cm}
+		\begin{tabular*}{\linewidth}{|*{12}{c|}} 
+			%    	\begin{tabular*}{\linewidth}{|*cc|c|c|c|c|c|c|c|c|c|c|}
+			\cline{3-12} 
+			\multicolumn{1}{c}{}& & \multicolumn{4}{c|}{Matching Accuracy}  & \multicolumn{2}{c|}{Matching Type} & \multicolumn{2}{|c|}{Representation} & \multicolumn{2}{c|}{Implementation}\\    		
+			\cline{3-12} 
+			\multicolumn{1}{c}{}& & exact & ng-appr. & $\epsilon$-appr. & $\delta$-$\epsilon$-appr. & Whole & Subseq. & Raw & Reduced & Original  & New \\    		
+			\cline{1-12}			 		 
+			%			\multirow{2}{*}{\rotateTbox[origin=c]{90}{Indexes}} 
+			\multicolumn{1}{|c|}{\multirow{6}{*}{\rotatebox[origin=c]{90}{Indexes}}}
+			& \multicolumn{1}{|c|}{ADS+} &\cite{journal/vldb/Zoumpatianos2016} &\cite{journal/vldb/Zoumpatianos2016} & $\bullet$ & $\bullet$ &  \checkmark &  &  & iSAX &  C &\\	
+			%\cline{2-12}			 		 
+		 	%& \multicolumn{1}{|c|}{Coconut} &\cite{journal/pvldb/kondylakis18} & \cite{journal/pvldb/kondylakis18} &  &  &  \checkmar &   & & EAPCA & C++ & \\	
+		 	\cline{2-12}			 		 		& \multicolumn{1}{|c|}{DSTree} &\cite{conf/vldb/Wang2013} & \cite{conf/vldb/Wang2013} &$\bullet$&$\bullet$&  \checkmark &   & & EAPCA & Java & C\\	
+			\cline{2-12}			 & \multicolumn{1}{|c|}{iSAX2+} & \cite{journal/kais/Camerra2014} & \cite{journal/kais/Camerra2014} &$\bullet$&$\bullet$& \checkmark & &  &  iSAX &  C\# & C\\	
+			\cline{2-12}			 	 
+			& \multicolumn{1}{|c|}{HNSW} & 
+			& \cite{journal/corr/malkov16} &   &  & \checkmark&  & \checkmark & & C++ &  \\	
+			\cline{2-12}			 	 
+			& \multicolumn{1}{|c|}{M-tree} & \cite{conf/vldb/Ciaccia1997}
+			&  & \cite{conf/icde/Ciaccia2000} & \cite{conf/icde/Ciaccia2000} & \checkmark&  & \checkmark & & C++ &  \\	
+			\cline{2-12}			 	 
+			%& \multicolumn{1}{|c|}{\color{red}{Faiss-IVF}} &  & \cite{journal/tpami/jegou2011,journal/tpami/ge2014}  &  &  & \checkmark&  &  & OPQ & C++  &\\	
+			& \multicolumn{1}{|c|}{IMI} &  & \cite{journal/pami/babenko15,journal/tpami/ge2014}  &  &  & \checkmark&  &  & OPQ & C++  &\\	
+			\cline{2-12}			 		 
+			& \multicolumn{1}{|c|}{R*-tree} & \cite{conf/icmd/Beckmann1990} &  &  &  & \checkmark&  &  & PAA & C++  &\\	
+			\cline{2-12}			 		 
+			& \multicolumn{1}{|c|}{SFA trie} &\cite{journal/edbt/Schafer2012} & \cite{journal/edbt/Schafer2012} &  &  & \checkmark & \checkmark & & SFA & Java & C\\	
+			\cline{2-12}			 		 
+			& \multicolumn{1}{|c|}{SRS} & & &\cite{conf/vldb/sun14}  & \cite{conf/vldb/sun14} & \checkmark &  &  & Signatures & C++ & \\				
+			\cline{2-12}			 		 
+			& \multicolumn{1}{|c|}{VA+file} & {\cite{conf/cikm/Hakan2000}} & $\bullet$&$\bullet$&$\bullet$& {\checkmark} &  & & {DFT} & {MATLAB} & {C}\\	
+			\cline{2-12}			 		 
+			%& \multicolumn{1}{|c|}{LSH} & &  &  & \cite{conf/vldb/Gionis1999} & \checkmark&   &  \checkmark&  & C++& \\	
+			\cline{1-12}			 		 
+			\multicolumn{1}{|c|}{\multirow{3}{*}{\rotatebox[origin=c]{90}{ Other }}}
+			& \multicolumn{1}{|c|}{UCR Suite} & \cite{conf/kdd/Mueen2012} &  &  &  & $\bullet$& \checkmark &  \checkmark &  & C &\\	
+			\cline{2-12}			 		 
+			& \multicolumn{1}{|c|}{MASS} &\cite{journal/dmkd/Yeh2017} &  &   &  &$\bullet$& \checkmark &  & DFT &  C &\\	
+			\cline{2-12}			 		 
+			& \multicolumn{1}{|c|}{Stepwise} &\cite{conf/kdd/Karras2011} &  &  &  & \checkmark&  &   & DHWT & C & \\	
+			\cline{1-12}			 		 
+		\end{tabular*}
+	} % font size
+	\caption{Similarity search methods used in this study (a comprehensive list of exact similarity search methods is included in our previous work~\cite{journal/pvldb/echihabi2018}). The "$\bullet$" indicates our modifications to original methods.}
+	\label{tab:multiprogram}
+\end{table*}
+\end{comment}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\vspace*{-0.3cm}
+
+\subsection{Approximate Similarity Search Methods}
+
+There exist several techniques for approximate similarity search~\cite{conf/stoc/indyk1998,conf/vldb/Gionis1999, journal/jda/bustos2004,conf/icde/houle2005,conf/kdd/ColeSZ05,journal/tpami/chavez2008,conf/icsis/amato2008,conf/sisap/tellez2011,conf/vldb/sun14,journal/tpami/ge2014,journal/corr/malkov16,conf/cvpr/yandex16}  {\color{black}\cite{conf/sigmod/berchtold1998,conf/pods/ooi2000,conf/vldb/yu2001}}. 
+We focus on the {\color{black}7} most prominent techniques designed for multidimensional data, and we also describe the approximate search algorithms designed specifically for data series. 
+We also propose a new set of techniques that can answer $\delta$-$\epsilon$-approximate queries based on modifications to existing exact similarity methods for data series.
+
+%In Table~\ref{tab:multiprogram}, we categorize LSH, a state of the art approximate algorithm.
+%A thorough evaluation of all approximate methods deserves a study on its own, and we defer it to future work.
+
+%A thorough evaluation of all approximate methods deserves a study on its own, and we defer it to future work.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsubsection{State-of-the-Art for Multidimensional Vectors}
+
+\begin{comment}
+
+{\color{red}
+	$\epsilon$-approximate
+	S. Arya, D. Mount, Approximate nearest neighbor queries in fixed
+	dimensions, in: Proceedings of the fourth annual ACM-SIAM Sym-
+	posium on Discrete algorithms, SODA'93, Philadelphia, PA, USA,
+	1993.
+	[20] P. Indyk, R. Motwani, Approximate nearest neighbors: towards
+	removing the curse of dimensionality, in: Proceedings of STOC'98,
+	New York, USA, 1998.
+	[21] E., Kushilevitz, R. Ostrovsky, Y. Rabani. Efficient search for approx-
+	imate nearest neighbor in high dimensional spaces, in: Proceedings
+	of STOC'98, New York, USA 1998.
+	[22] P., Haghani, S. Michel, K. Aberer, Distributed similarity search in high
+	dimensions using locality sensitive hashing, in: Proceedings of the
+	12th International Conference on Extending Database Technology:
+	Advances in Database Technology, New York, USA, 2009, pp. 744
+	–
+	755.
+	[23] S. Arya, D.M. Mount, N.S. Netanyahu, R. Silverman, A. Wu. An
+	optimal algorithm for approximate nearest neighbor searching. in:
+	Proceedings of the Fifth Annual ACM-SIAM Symposium on Discrete
+	Algorithms, Society for Industrial and Applied Mathematics, 19
+	
+	
+	$\delta-0$-approximate
+	
+	
+	E. Chávez, K. Figueroa, G. Navarro, Effective proximity retrieval by
+	ordering permutations, IEEE Trans. Pattern Anal. Mach. Intell. 30 (9)
+	(2008) 1647
+	–
+	1658
+	.
+	[25] E.S. Tellez, E. Chávez, G. Navarro, Succinct nearest neighbor search,
+	in: Proceedings of SISAP, 2011.
+	[26] M.E., Houle, J. Sakuma. Fast approximate similarity search in
+	extremely high-dimensional data sets, in: Proceedings of ICDE 2005.
+	[27]
+	E. Chávez, E. Sadit Tellez, Navigating k-nearest neighbor graphs to
+	solve nearest neighbor searches, Adv. Pattern Recog. (2010) 270
+	–
+	280
+	.
+	[28]
+	K.L. Clarkson, Nearest neighbor queries in metric spaces, Discrete
+	Comput. Geometry 22 (1) (1999) 63
+	–
+	93
+	.
+	[29]
+	B. Bustos, G. Navarro, Probabilistic proximity searching algorithms
+	based on compact partitions, J. Discrete Algorithms 2 (1) (2004)
+	115
+	–
+	134
+	.
+	[30] E. Chávez, G. Navarro, A probabilistic spell for the curse of dimen-
+	sionality, in: Proceedings of the Algorithm Engineering and Experi-
+	mentation, Springer, 2001 pp. 147
+	–
+	160.
+	[31]
+	E. Chávez, G. Navarro, Probabilistic proximity search: fighting the
+	curse of dimensionality in metric spaces, Inf. Process. Lett. 85 (1)
+	(2003) 39
+	–
+	46
+	
+	
+	
+	Reviews:
+	
+	Approximate similarity search: A multi-faceted problem
+	Author links open overlay panelMarcoPatella
+	PaoloCiaccia
+	
+	On nonmetric similarity search problems in complex domains.
+	
+}
+\end{comment}
+
+{\color {black} \noindent{\bf Flann}~\cite{flann} is an in-memory ensemble technique for $ng$-approximate nearest neighbor search in high-dimensional spaces. Given a dataset and a desired search accuracy, Flann selects and auto-tunes the most appropriate algorithm among randomized kd-trees~\cite{random-kd-trees} and a new proposed approach based on hierarchical k-means trees~\cite{flann}.}
+
+{\color {black} \noindent{\bf HD-index}~\cite{hdindex} is an $ng$-approximate nearest neighbor technique that partitions the original space into disjoint partitions of lower dimensionality, then represents each partition by an RBD tree (modified B+tree with leaves containing distances of data objects to reference objects) built on the Hilbert keys of data objects. A query $Q$ is partitioned according to the same scheme, % as the dataset, 
+searching the hilbert key of $Q$ in the RDB tree of each partition, then refining the candidates first using approximate distances based on triangular and Ptolemaic inequalities then using the real distances.}
+
+\noindent{\bf HNSW}. 
+HNSW~\cite{journal/corr/malkov16} is an {\color{black} in-memory} $ng$-approximate method that belongs to the class of proximity graphs that exploit two fundamental geometric structures: the Voronoi Diagram (VD) and the Delaunay Triangulation (DT). 
+A VD is obtained when a given space is decomposed using a finite number of points, called \emph{sites}, into regions such that each site is associated with a region consisting of all points that are closer to it than to any other site. 
+The DT is the dual of the VD.
+It is constructed by connecting sites with an edge if their regions share a side. %, and thus guarantees that given a query $S_Q$, and any starting vertex, a greedy traversal of the graph, selecting at each step the next adjacent vertex closest to $S_Q$, finds the nearest neighbor of $S_Q$~\cite{journal/corr/malkov16}. 
+Since constructing a DT for a generic metric space is not always possible (except if the DT is the complete graph)~\cite{journal/vldbj/navarro2002}, proximity graphs, which approximate the DT by conserving only certain edges, have been proposed~\cite{conf/siam/arya1993,journal/apr/chavez2010,conf/sigkdd/aoyama2011,conf/iccv/wang2013,journal/is/malkov2014,conf/sisap/chavez2015,conf/icmm/jiang2016,journal/corr/malkov16}. 
+A k-NN graph is a proximity graph, where only the links to the closest neighbors are preserved. 
+Such graphs suffer from two limitations: (i) the curse of dimensionality; and (ii) the poor performance on clustered data (the graph has a high probability of being disconnected). 
+To address these limitations, the Navigable Small World (NSW) method~\cite{journal/is/malkov2014} proposed to heuristically augment the approximation of the DT with long range links to satisfy 
+%(in a generic metric space), 
+the small world navigation properties~\cite{conf/stoc/kleinberg2000}.  
+%for the Euclidean space, to ensure global graph connectivity and poly-logarithmic scalability of the greedy search. 
+The HNSW graph~\cite{journal/corr/malkov16} improves the search efficiency of NSW 
+%to logarithmic scale 
+by organizing the links in hierarchical layers according to their lengths. 
+Search starts at the top layer, which contains only the longest links, and proceeds down the hierarchy. % once the local minimum is found at each layer. 
+%We select the 
+HNSW %graph to represent graph-based methods since it 
+is considered the state-of-the-art~\cite{conf/sisap/martin17}. 
+
+{\color {black} \noindent{\bf NSG}~\cite{nsg} is a recent in-memory proximity graph approach that approximates a graph structure called MRNG~\cite{nsg} which belongs to the class of Monotonic Search Networks (MSNET). 
+%The MSNET family guarantees that there exists a monotonic path between any two nodes and includes the DT structure discussed earlier. However, 
+Building an MRNG graph for large datasets becomes impractical; that is why the state-of-the-art techniques approximate it. NSG approximates the MRNG graph by relaxing the monotonicity requirement and edge selection strategy, and dropping the longest edges in the graph.}
+
+
+%\paragraph*{\textbf{LSH}}
+
+
+%\noindent{\bf SRS.} SRS belongs to the LSH family~\cite{journal/corr/andoni2018}. 
+%LSH encompasses a class of randomized algorithms that solve the $\delta$-$\epsilon$-approximate nearest neighbor problem in sub-linear time, for $\delta < 1 $. 
+%The main intuition 
+%is that two points that are nearby in a high dimensional space, will remain nearby when projected to a lower dimensional space~\cite{conf/stoc/indyk1998}. 
+%LSH techniques project points using hash functions, which guarantee that only nearby points are likely to be mapped to the same bucket. 
+%Given a dataset $\mathbb{S}$ and a query $S_Q$, $L$ hash functions are applied to all points in $\mathbb{S}$ and to the query $S_Q$. Only points that fall at least once in the same bucket as $S_Q$, in each of the $L$ hash tables, are further processed in a linear scan to find the $\delta$-$\epsilon$-approximate nearest-neighbor. 
+%There exist many variants of LSH, either proposing different hash functions to support particular similarity measures~\cite{conf/poccs/broder1997,conf/sigcg/datar2004,conf/stoc/charikar02,conf/sigmod/gan2012}, 
+%%, for instance, min-hash for Jaccard coefficient~\cite{conf/poccs/broder1997}, p-stable distributions for $L_p$ distances~\cite{conf/sigcg/datar2004}, sim-hash~\cite{conf/stoc/charikar02}, or cosine similarity~\cite{conf/sigmod/gan2012}, 
+%or improving the theoretical bounds on query accuracy (i.e., $\delta$ or $\epsilon$), query efficiency or the index size~\cite{journal/nips/liu2004,conf/soda/panigrahy2006,journal/siamdm/motwani2007,conf/vldb/lv2007,conf/sigmod/gan2012,journal/atct/odonnell2014,conf/vldb/sun14,qalsh}. 
+%%While LSH-based methods enjoy sound theoretical guarantees, they are not scalable since the size of the index grows beyond the dataset size~\cite{conf/poccs/broder1997}. 
+%In this work, we use the state-of-the-art LSH-based index,  SRS~\cite{conf/vldb/sun14}, which answers $\delta$-$\epsilon$-approximate queries using size linear to the dataset size, while empirically outperforming other LSH methods (with size super-linear to the dataset size~\cite{conf/poccs/broder1997}). 
+%%A comprehensive survey on LSH methods can be found in~\cite{journal/corr/andoni2018}.
+
+%% 
+%%SRS: We are using SRS with the following settings:
+%%-SRS-2, use first stop condition based on probability threshold and not the number of data points processed. We also modified it to compile with -O2 instead of O3.
+%%Mention the JL lemma: requirement (m >= 4*log(n)/...)
+%%(LSH)
+%%maybe C2LSH (more efficient but high memory footprint)
+
+%%It supports randomized exact and randomized approximate near-neighbor queries. 
+%%Note that a near-neighbor query is different from a nearest-neighbor query. 
+%%Given $r \in \mathbb{R}_{>0}$ and a query $S_Q$, the point $S_C$ is an $r$-near-neighbor of $S_Q$ if the distance between the two points is less than $r$. 
+%%Given $r > 0$, $c > 1$ and $ 0 \leq \delta \leq 1$, $S_C$ is the $c$-approximate $r$-near-neighbor of $S_Q$ if their distance is at most $c$ times $r$, with probability at least $\delta$. Although different, nearest neighbor search algorithms are related as follows: 
+%%1) the nearest-neighbor algorithm answers the near-neighbor search simply by verifying that the reported nearest neighbor is within distance $r$ from $S_Q$; 2) 
+%%Near-neighbor search can also answer nearest-neighbor queries, 
+%%within theoretical bounds, if run 
+%%by running the search several times with increasing values of $r$~\cite{journal/cacm/andoni2008}.
+
+
+\noindent{\bf IMI}. Among the different quantization-based inverted indexes proposed in the literature~\cite{journal/tpami/jegou2011,conf/icassp/jegou2011,journal/iccv/xia2013,journal/pami/babenko15}, IMI~\cite{journal/tpami/ge2014,journal/pami/babenko15} is considered the state-of-the-art~\cite{journal/ite/matsui2018}. 
+This class of techniques builds an inverted index storing the list of data points that lie in the proximity of each codeword. 
+The codebook
+%, consisting of all the codewords, 
+is the set of representative points obtained by performing clustering on the original data. When a query arrives, the $ng$-approximate search algorithm returns the list of all points corresponding to the closest codeword (or list of codewords).
+
+{\color{black} \noindent{\bf LSH.} The LSH family}~\cite{journal/corr/andoni2018} encompasses a class of randomized algorithms that solve the $\delta$-$\epsilon$-approximate nearest neighbor problem in sub-linear time, for $\delta < 1 $. 
+The main intuition 
+is that two points that are nearby in a high dimensional space, will remain nearby when projected to a lower dimensional space~\cite{conf/stoc/indyk1998}. 
+LSH techniques {\color{black}partition points into buckets} using hash functions, which guarantee that only nearby points are likely to be mapped to the same bucket. 
+Given a dataset $\mathbb{S}$ and a query $S_Q$, $L$ hash functions are applied to all points in $\mathbb{S}$ and to the query $S_Q$. Only points that fall at least once in the same bucket as $S_Q$, in each of the $L$ hash tables, are further processed in a linear scan to find the $\delta$-$\epsilon$-approximate nearest-neighbor. 
+There exist many variants of LSH, either proposing different hash functions to support particular similarity measures~\cite{conf/poccs/broder1997,conf/sigcg/datar2004,conf/stoc/charikar02,conf/sigmod/gan2012}, 
+%, for instance, min-hash for Jaccard coefficient~\cite{conf/poccs/broder1997}, p-stable distributions for $L_p$ distances~\cite{conf/sigcg/datar2004}, sim-hash~\cite{conf/stoc/charikar02}, or cosine similarity~\cite{conf/sigmod/gan2012}, 
+or improving the theoretical bounds on query accuracy (i.e., $\delta$ or $\epsilon$), query efficiency or the index size~\cite{journal/nips/liu2004,conf/soda/panigrahy2006,journal/siamdm/motwani2007,conf/vldb/lv2007,conf/sigmod/gan2012,journal/atct/odonnell2014,conf/vldb/sun14,qalsh} {\color{black}~\cite{sk-lsh}}. 
+%While LSH-based methods enjoy sound theoretical guarantees, they are not scalable since the size of the index grows beyond the dataset size~\cite{conf/poccs/broder1997}. 
+{\color{black}In this work, we select SRS~\cite{conf/vldb/sun14} and QALSH~\cite{qalsh} to represent the class of LSH techniques because they are considered the state-of-the-art in terms of footprint and accuracy, respectively~\cite{hdindex}}. SRS answers $\delta$-$\epsilon$-approximate queries using size linear to the dataset size, while empirically outperforming other LSH methods (with size super-linear to the dataset size~\cite{conf/poccs/broder1997}). 
+%A comprehensive survey on LSH methods can be found in~\cite{journal/corr/andoni2018}.
+{\color{black} QALSH is a query-aware LSH technique that partitions points into buckets using the query as anchor. Other LSH methods typically partition data points before a query arrives, using a random projection followed by a random shift. QALSH, does not perform the second step until a query arrives, thus improving the likelihood that points similar to the query are mapped to the same bucket.}
+
+
+ \begin{comment}
+%\paragraph*{\textbf{CSZ}}
+\noindent{\bf CSZ.} The CSZ method\footnote{Since this method was not explicitly named in the original paper, we will refer to it as \emph{CSZ} (from the authors' initials).}~\cite{conf/kdd/ColeSZ05} is a $\delta$-$\epsilon$-approximate  similarity search method based on sketches that finds the most correlated equi-length windows in a set of uncooperative, i.e., noisy time series. Given two windows of equal length, $w_1$ and $w_2$, CSZ computes the similarity between the entire windows $w_1$ and $w_2$ (whole matching). It approximates $w_1$ and $w_2$ with $2b+1$ random projections using $d$ random vectors. The median of the Euclidean distances between these projections approximates the exact distance between $w_1$ and $w_2$. In particular, the approximate distance is $\delta$-$\epsilon$ approximate, where $\epsilon$ is a function of $d$ and $\delta = 1-(1/2)^b$~\cite{conf/kdd/ColeSZ05}.
+\end{comment}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsubsection{State-of-the-Art for Data Series}
+While a number of data series methods support approximate similarity search ~\cite{conf/icde/shatkay1996,conf/kdd/Keogh1997,conf/ssdm/Wang2000,conf/kdd/ColeSZ05,conf/icdm/Camerra2010,journal/edbt/Schafer2012,conf/vldb/Wang2013,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016}, we focus on those that fit the scope of this study, i.e., methods that support out-of-core k-NN queries with Euclidean distance. 
+In particular, we examine DSTree~\cite{conf/vldb/Wang2013}, iSAX2+~\cite{journal/kais/Camerra2014}, and VA+file~\cite{conf/cikm/Hakan2000}, the three data series methods that perform the best in terms of exact search~\cite{journal/pvldb/echihabi2018}, and also inherently support ng-approximate search.
+ 
+%some are not applicable to our study since they either use correlation~\cite{conf/ssdm/Wang2000,conf/kdd/ColeSZ05}, are designed for subsequence matching~\cite{conf/kdd/Keogh1997} or in-memory data~\cite{conf/icde/shatkay1996}. Since the focus of our study is out-of-core k-NN queries supporting the Euclidean distance, the only methods that we are aware of that support this scenario are exact data series indexes that include ng-approximate search, so we chose the best in this class of techniques ~\cite{conf/vldb/Wang2013,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016} per the results in~\cite{journal/pvldb/echihabi2018}. 
+
+%In this subsection, we describe exact methods designed for data series. 
+%We selected the best methods based on an extensive experimental evaluation~\cite{journal/pvldb/echihabi2018}. 
+%In this section, we describe, in chronological order, algorithms that can produce exact results.
+%The properties of these algorithms are also summarized in Table~\ref{tab:multiprogram}.
+%: ADS+~\cite{journal/vldb/Zoumpatianos2016}, DSTree~\cite{conf/vldb/Wang2013}, iSAX2+~\cite{journal/kais/Camerra2014}, MASS~\cite{journal/dmkd/Yeh2017}, M-tree~\cite{conf/vldb/ciaccia1997}, R*-tree~\cite{conf/icmd/Beckmann1990}, SFA trie~\cite{journal/edbt/Schafer2012}, UCR Suite~\cite{conf/kdd/Mueen2012}, and Stepwise~\cite{conf/kdd/Karras2011}. 
+%Below, we succinctly describe, in chronological order of publication, the main intuition behind each similarity search method and any modifications or optimizations we added to the original implementations.
+%
+%Figure~\ref{fig:taxonomy} shows the taxonomy of the methods evaluated in this study.
+%
+
+
+%\paragraph*{\textbf{R*-tree}}
+%1990
+
+\begin{comment}
+\noindent{\bf R*-tree.}
+The R*-tree~\cite{conf/icmd/Beckmann1990} is a height-balanced spatial access method 
+%for rectangles which optimizes the R-tree~\cite{conf/sigmod/Guttman1984} by reducing the coverage (dead space) and margin of individual rectangles and minimizes their overlap. The family of R-trees are spatial access methods 
+that partitions the data space into a hierarchy of nested overlapping rectangles.
+% , and organizes them into a height-balanced index. 
+Each leaf can contain either the raw data objects or pointers to those, along with the enclosing rectangle. 
+Each intermediate node contains the minimum bounding rectangle that encompasses the rectangles of its children. 
+%The root node contains one rectangle bounding the whole data entries. 
+Given a query $S_Q$, the R*-tree query answering algorithm visits all nodes whose rectangle intersects $S_Q$, starting from the root. Once a leaf is reached, all its data entries are returned. 
+%Since the rectangles overlap, the exact search is not guaranteed to follow one single path to the leaf.
+We tried multiple implementations of the R*-tree, and opted for the fastest~\cite{code/Marios2014}. 
+We modified this code by adding support for PAA summaries.
+
+%\paragraph*{\textbf{M-tree}}
+%1997
+\noindent{\bf M-tree.}
+The M-tree~\cite{conf/vldb/Ciaccia1997} is a multidimensional, metric-space access method 
+%but it partitions the data differently from the R-trees. Whereas the R-tree partitions the data entries according to their positions in the vector space using rectangles, the M-tree 
+that uses hyper-spheres to divide the data entries according to their relative distances.
+% using hyper-spheres. The M-tree is designed for metric spaces, which encompass vector spaces, and thus only requires the distance function to be a metric, i.e., it satisfies positivity, symmetry and triangular inequality. 
+The leaves store data objects, and the internal nodes store routing objects; both store distances from each object to its parent. 
+%A routing object $O_r$ is a data object which was selected to serve a routing role. It points to its subtree which includes all data objects within distance $r(O_r)$ from $O_r$. The subtree is called the covering tree and the distance $r(O_r)$ is called the covering radius. 
+During query answering, the M-tree uses these distances to prune the search space. 
+The triangle inequality that holds for metric distance functions guarantees correctness.
+Apart from exact queries, it also supports $\epsilon$-approximate and $\delta$-$\epsilon$-approximate 
+%($r$-range and $k$-NN) 
+queries. 
+We experimented with four different code bases:
+% for the M-tree: 
+two implementations that support bulk-loading~\cite{conf/ads/Ciaccia1998,journal/vldb/Dallachiesa2014}, the disk-aware mvptree~\cite{conf/sigmod/Bozkaya1997},
+% for the mvptree~\cite{conf/sigmod/Bozkaya1997}. 
+%Although the implementation proposed in
+and a memory-resident implementation~\cite{journal/vldb/Dallachiesa2014}.
+% is memory-persistent, we picked it since it is 
+We report the results with the memory-resident version, because (despite our laborious efforts) it was the only one that scaled to datasets larger than 1GB. 
+We modified it slightly to use the same sampling technique as the original implementation of the MTree~\cite{conf/ads/Ciaccia1998} that chooses the number of initial samples based on the leaf size, minimum utilization, and dataset size. 
+%We set the minimum utilization to 0.2 as suggested by the author.
+\end{comment}
+
+\noindent{\bf DSTree}~\cite{conf/vldb/Wang2013} is a tree index based on the EAPCA summarization technique and supports ng-approximate and exact query answering. 
+Its dynamic segmentation algorithm %helps it summarize a data series accurately and allows it to increase the resolution of a segmentation by splitting 
+allows tree nodes to split vertically and horizontally, unlike the other data series indexes which allow either one or the other. 
+%In particular, SAX-based indexes allow horizontal splitting by adding a breakpoint to the y-axis, and SFA allows vertical splitting by adding a new DFT coefficient.) 
+The DSTree supports a lower and upper bounding distance and uses them to calculate a QoS measure that determines the optimal way to split any given node. 
+%Each nodes has its own segmentation policy which may result in a different number of segments or in segments of different length. The data series in a given node are all segmented using the same policy but each node has its own segmentation policy which may result in nodes having a different number of segments or segments of different lengths.
+We significantly improved the efficiency of the original DSTree Java implementation by developing it from scratch in C and optimizing its buffering and memory management, 
+%significantly improving the performance of the original implementation (in Java). 
+%In fact, using our default workload of indexing and answering 100 exact queries, the C version is 
+making it 4 times faster across datasets ranging between 25-250GB.
+
+
+%2014
+%\noindent{\bf iSAX2+.}
+\noindent{\bf SAX-based indexes} include different flavors of tree indexes based on SAX summarization. 
+The original iSAX index~\cite{conf/kdd/shieh1998} was enhanced with a better spliting policy and bulk-loading support in iSAX 2.0~\cite{conf/icdm/Camerra2010}, while
+%and to improve iSAX's node splitting by using equi-depth of gaussian distribution. 
+iSAX2+~\cite{journal/kais/Camerra2014} further optimized bulk-loading. 
+%In the literature, competing approaches have either compared to iSAX, or iSAX 2.0. 
+%This is the first time that iSAX2+ is compared to other exact data series indexes. 
+ADS+~\cite{journal/vldb/Zoumpatianos2016} then improved upon iSAX2+ by making it adaptive, %initially building a tree structure containing only the iSAX summarizations of the raw data, and then using a query-adaptive algorithm to add the raw data to the leaves. 
+Coconut~\cite{journal/pvldb/kondylakis18,DBLP:conf/sigmod/KondylakisDZP19,coconutjournal} by constructing a compact and contiguous data layout, and DPiSAX~\cite{dpisax,dpisaxjournal}, ParIS~\cite{conf/bigdata/peng18} and MESSI~\cite{conf/icde/peng20} by exploiting parallelization.
+Here, we use iSAX2+, because of its excellent performance~\cite{journal/pvldb/echihabi2018} and the fact that the SIMS query answering strategy~\cite{journal/vldb/Zoumpatianos2016} of ADS+, Coconut, and ParIS is not immediately amenable to approximate search with guarantees (we plan to extend these methods in our future work). 
+%In contrast, iSAX2+ supports efficient ng-approximate %and exact 
+%query answering. 
+We do not include DPiSAX and MESSI, because they are distributed, and in-memory only, algorithms, respectively. %, and therefore out of the scope of this work.
+%We significantly improved the efficiency of iSAX2+ by reimplementing it from scratch in C (instead of C\#), and optimizing its memory management. 
+
+%It tailors to diverse workloads by proposing different variants: ADS, ADS+, PADS+, ADS FULL and ADS+ (SIMS). ADS+ improves the performance of ADS by dynamically using an adaptive leaf size: a large leaf size is chosen during index building and a smaller one during query answering. PADS+ tailors to approximate answering by only building the root node and the buffers of the root children nodes. 
+%The SIMS algorithm performs an ng-approximate search in the index tree and uses the answer to prune the search space, performing a skip-sequential search on the raw data.
+%In all our experiments involving ADS+ we use the SIMS algorithsm for exact similarity search.
+%ADS-FULL is a non-adaptive version of ADS, that builds a full index using a double pass on the data.
+%but instead of adding the raw data series to the leaves, it adds their summarizations. 
+
+
+%summarizes the raw data series into SAX summarizations . A SAX summarization first divides the raw data into a smaller number of horizontal segments of equal length using PAA \cite{journal/kais/Keogh2001}. Then instead of representing each segment with a real value as in the DSTree, it uses a discretization technique on the Stepwise 
+
+%The difference between isax2+ and sfa in terms of the tree structure:
+%isax2+ fanout at the root level is equal to the length of the reduced dim (number of PAA segments)
+%isax2+ fanout at each internal node is always 2
+%isax2+ depth is at most the alphabet size * num_PAA_segments: default 8 * 16. 
+
+%\paragraph*{\textbf{ADS+}}
+%2016
+%\noindent{\bf ADS+.}
+%ADS+~\cite{journal/vldb/Zoumpatianos2016} is the first adaptive data series index. 
+%based on the iSAX representation and further improves upon iSAX2+ by initially building the 
+%It builds a tree structure containing only the iSAX summarizations of the raw data, and then exploits a query-adaptive algorithm to add the raw data to the leaves. It tailors to diverse workloads by proposing different variants: ADS, ADS+, PADS+, ADS FULL and ADS+ (SIMS). ADS+ improves the performance of ADS by dynamically using an adaptive leaf size: a large leaf size is chosen during index building and a smaller one during query answering. PADS+ tailors to approximate answering by only building the root node and the buffers of the root children nodes. 
+%The SIMS algorithm performs an ng-approximate search in the index tree and uses the answer to prune the search space, performing a skip-sequential search on the raw data.
+%In all our experiments involving ADS+ we use the SIMS algorithm for exact similarity search.
+%ADS-FULL is a non-adaptive version of ADS, that builds a full index using a double pass on the data.
+%but instead of adding the raw data series to the leaves, it adds their summarizations. 
+
+%compared to isax 2, serial, rtree, xtree
+
+
+%\paragraph*{\textbf{DSTree}}
+%2013
+
+% (Figure~\ref{fig:dstree:orig:new}).
+\ifJournal
+\begin{figure}[t]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	%\hspace{3mm}
+	\begin{subfigure}{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{dstree_orig_new}
+		\caption{Total Time (Indexing and Answering 100 Exact Queries)}
+		\label{fig:dstree:orig:new:combined}
+	\end{subfigure}u
+	\begin{subfigure}{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{dstree_orig_new_detailed}
+		\caption{Detailed Times for Indexing and Answering 100 Exact Queries}
+		\label{fig:dstree:orig:new:detailed}
+	\end{subfigure}
+	\caption{DSTree Implementation Optimization}
+	\label{fig:dstree:orig:new}
+}
+\end{figure}
+\fi
+
+
+
+
+\begin{comment}
+
+%\paragraph*{\textbf{MASS}} 
+%2017
+\noindent{\bf MASS.}
+MASS~\cite{journal/dmkd/Yeh2017} is an exact subsequence matching algorithm, which computes 
+%the distance profile of a query $Q$ to a long data series $DS$, i.e. the distance between $Q$ and every subsequence of $DS$. 
+the distance between a query, $S_Q$, and every subsequence in the series, using 
+%It calculates the distance based on 
+the dot product of the DFT transforms of the series and the reverse of $S_Q$.
+We adapted it to perform exact whole matching queries. 
+%Since the query and candidate series are all of equal length, only one dot product operation is performed between a single query and a single candidate data series. However, the number of dot products calculated for each query is equal to the size of the dataset. 
+
+\end{comment}
+
+
+%\paragraph*{\textbf{VA+file}}
+%2000
+
+
+{\color {black} \noindent{\bf TARDIS}~\cite{conf/icde/zhang2019} is a distributed indexing method that supports exact and $ng$-approximate kNN queries. It improves the efficiency and accuracy of iSAX by building a more compact, k-ary tree index, exploiting word-level (instead of character-level) cardinality, and using a novel conversion scheme between SAX representations. We do not include TARDIS in the experimental evaluation since it is a distributed algorithm (built in Scala for Spark). 
+%All the evaluated approaches are single-node approaches built with C/C++.
+}
+
+\noindent{\bf VA+file}~\cite{conf/cikm/Hakan2000} is a skip-sequential method that improves the accuracy and efficiency of the VA-file~\cite{conf/vldb/Weber1998}. 
+Both techniques create a file that contains quantization-based summarizations of the original multidimensional data. 
+Search proceeds by sequentially reading each summarization, % from the filter file, 
+calculating its lower bounding distance to the query, and accessing the original multidimensional vector only if the lower bounding distance is less than the current \emph{best-so-far (bsf)} answer. 
+%The VA+file improves the approximations by: 1) decorrelating the data using KLT; 2) allocating a different number of bits per dimension depending on its energy level; 3) and using a k-means instead of an equi-depth approach to select the centroids for each dimension. 
+We greatly improved the performance of the original VA+file by approximating KLT with DFT~\cite{conf/cikm/Hakan2000,journal/acta/maccone2007} and implementing it in C instead of Matlab. 
+In the rest of the text, whenever we mention the VA+file, we refer to the modified version.
+
+
+
+ %helps it summarize a data series 
+%significantly improved the efficiency of the original VA+file by implementing it in C and modifying it to use DFT instead of KLT, . %In the rest of the text, whenever we mention the VA+file, we refer to the modified version.
+
+
+
+%does not assume that neighboring points (dimensions) in the sequence are uncorrelated. It thus improves the accuracy of the approximations by 
+%1) transforming the original data using KLT for optimal energy compaction; 2) 
+%allocating bits per dimension in a non-uniform fashion, and partitioning each dimension using a k-means (instead of an equi-depth approach). 
+%In the rest of the text, whenever we mention the VA+file, we refer to the modified version.
+
+\begin{comment}
+%\paragraph*{\textbf{Stepwise}}
+%2011
+\noindent{\bf Stepwise.}
+The Stepwise method~\cite{conf/kdd/Karras2011} differentiates itself from indexing methods by storing DHWT summarizations vertically across multiple levels. 
+%That is different levels of filtering are performed before the raw data in the high dimensional space is accessed. 
+%A preprocessing step consists of transforming the raw data into a multi-level representation using DHWT. 
+This process happens in a pre-processing step.
+%The raw data is stored physically on disk in this new representation level by level. The number of levels is determined by the length of the query. So the longer the query, the more levels it takes to represent it, which also means the more intermediate steps there are before needing to access the raw data. 
+When a query $S_Q$ arrives, the algorithm converts it to DWHT, and computes the distance between $S_Q$ and the DHWT of each candidate data series 
+%in a stepwise fashion 
+one level at a time,
+%. The precomputed distances are stored for faster processsing. Both a 
+using lower and upper bounding distances it filters out non-promising candidates.
+When leaves are reached, the final refinement step consists of calculating the Euclidean distance between the raw representations of $S_Q$ and the candidate series.
+We modified the original implementation to load the pre-computed sums in memory and answer one query at a time (instead of the batch query answering of the original implementation). 
+We also slightly improved memory management to address swapping issues that occurred with the out-of-memory datasets. 
+
+%compared to isax (not isax 2), and sequential access.
+
+%they show Stepwise being better than sequential scan and sequential scan better than isax across the board.
+
+
+%\paragraph*{\textbf{SFA trie}}
+%2012
+\noindent{\bf SFA trie.}
+%Given an input dataset $D$ of raw data series $DS$,  
+The SFA approach~\cite{journal/edbt/Schafer2012} first summarizes the series using SFA of length 1 and builds a trie with a fanout equal to the alphabet size on top of them. 
+%The threshold of a leaf is the maximum number of raw data series that it can hold. Once this threshold is reached, the leaf is split, 
+As leaves reach their capacity and split, the length of the SFA word for each series in the leaf is increased by one, and the series are redistributed among the new nodes. 
+The maximum resolution is the number of DFT coefficients given as a parameter. 
+%A bulk-loading algorithm is supported to allow faster insertions and a lower-bounding distance function is supplied to prune the search space. 
+SFA implements lower-bounding to prune the search space, as well as a bulk-loading algorithm.
+We re-implemented SFA in C, optimized its memory management, and improved the sampling and buffering schemes. 
+This resulted in a significantly faster implementation than the original one in Java.
+%The original JAVA version allowed the max leaf size to be exceeded, so we modified this as well to stop execution and request the user to increase the leaf threshold.
+
+%\paragraph*{\textbf{UCR Suite}}
+%2012
+\noindent{\bf UCR Suite.}
+The UCR Suite~\cite{conf/kdd/Mueen2012} is an optimized sequential scan algorithm 
+%supporting both DTW and Euclidean distances 
+for exact subsequence matching. 
+%The algorithm uses the following optimizations: squared distances, lower bounding of DTW, early abandoning of ED and DTW, early abandoning of z-normalization, reordering early abandoning and cascading lower bounds in the case of DTW.
+We adapted the original algorithm to support exact whole matching. 
+%We used the optimizations relevant to the Euclidean distance.
+\end{comment}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\vspace*{-0.2cm}
+
+\subsubsection{Extensions of Data Series Methods}
+\label{sec:dataseriesextensions}
+
+We now propose extensions to the data series methods described above, that will allow them to support $\epsilon$-approximate and $\delta$-$\epsilon$-approximate search (in addition to ng-approximate that they already support).
+Due to space limitations, we only discuss the tree-based methods (such as iSAX2+ and DSTree); skip-sequential techniques (such as VA+file) can be modified following the same ideas.
+
+The exact 1-NN search algorithms of DSTree and iSAX2+ are based on an optimal exact NN algorithm first proposed for PMR-Quadtree~\cite{conf/isasd/samet1995}, which was then generalized for any hierarchical index structure that is constructed using a conservative and recursive partitioning of the data~\cite{conf/pods/berchtold1997}. 
+%This generalized algorithm forms the backbone of exact 1-NN search for most of the indexing methods surveyed in this study~\cite{conf/icmd/Beckmann1990,conf/vldb/Ciaccia1997,journal/edbt/Schafer2012,conf/vldb/Wang2013,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016,ulisse}. 
+
+\begin{algorithm}[tb]
+	{\scriptsize
+		\caption{exactNN({$\bm{S_Q}$},{$\bm{idx}$})}
+		\begin{algorithmic}[1]
+			%\Comment{query $q$ and index $idx$}	
+			\\{$\bm{bsf.dist}$} $\gets$ $\infty$ ; {$\bm{bsf.node}$} $\gets$ $NULL$;		
+			\For {each {{$\bm{rootNode}$} in {$\bm{idx}$} }}         
+			\State{$\bm{result.node}$} $\gets$ {$\bm{rootNode}$};
+			\State{$\bm{result.dist}$} $\gets$ calcMinDist({$\bm{S_Q}$},{$\bm{rootNode}$});			
+			\State{push $\bm{result}$ to $\bm{pqueue}$} 
+			\EndFor
+			\\{$\bm{bsf}$} $\gets$ {\color{mygreen}\dashuline{ng-approxNN}}({{$\bm{S_Q}$},$\bm{idx}$}); 		
+			\\add {$\bm{bsf}$} to {$\bm{pqueue}$};
+			\While{ {$\bm{result}$} $\gets$ pop next node from {$\bm{pqueue}$ } } 
+			\State{$\bm{n}$} $\gets$ {$\bm{result.node}$};
+			\If { {$\bm{n.dist}$} $>$ {$\bm{bsf.dist}$}} 
+			break;
+			\EndIf                 
+			\If {{$\bm{n}$} is a leaf}    \Comment{a leaf node}     
+			\For {each {{$\bm{S_C}$} in {$\bm{n}$} }}         
+			\State {$\bm{realDist}$} $\gets$ calcRealDist({$\bm{S_Q}$},{$\bm{S_C}$});
+			\If { {$\bm{realDist}$} $<$ {$\bm{bsf.dist}$}} 
+			\State {$\bm{bsf.dist}$} $\gets$ {$\bm{realDist}$} ;
+			\State {$\bm{bsf.node}$} $\gets$ {$\bm{n}$};		               
+			\EndIf                  
+			\EndFor        
+			\Else  \Comment{an internal node}
+			\For {each {{$\bm{childNode}$} in {$\bm{n}$} }}         
+			\State {$\bm{minDist}$} $\gets$ calcMinDist({$\bm{S_Q}$},{$\bm{childNode}$});
+			\If { {$\bm{minDist}$} $<$ {$\bm{bsf.dist}$}} add {$\bm{childNode}$} to
+			\State {$\bm{pqueue}$ } with priority {$\bm{minDist}$}; 
+			\EndIf                  
+			\EndFor        
+			\EndIf 
+			\EndWhile\label{euclidendwhile}
+			\State \Return {$\bm{bsf}$}%\Comment{The gcd is b}
+		\end{algorithmic}
+		\label{alg:exactNN}
+	} % font size
+\end{algorithm}
+
+Algorithm~\ref{alg:exactNN} describes an index-invariant algorithm for exact 1-NN search. It takes as arguments a query $S_Q$ and an index $idx$.
+%Line 4 only applies to~\cite{journal/edbt/Schafer2012,conf/vldb/Wang2013,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016,ulisse}.
+Lines 1-5 initialize the \emph{best-so-far (bsf)} answer and a priority queue with the root node(s) of the index in increasing order of lower bounding ($lb$) distances (the $lb$ distance is calculated by the function $calcMinDist$). 
+In line 6, the $ng$-approxNN function traverses one path of the index tree visiting one leaf to return an $ng$-approximate bsf answer, {\color{black} which} is added to the queue (line 7). 
+In line 8, the algorithm pops nodes from the queue, terminating in line 10 if the $lb$ distance of the current node is greater than the current \emph{bsf} distance (the $lb$ distances of all remaining nodes in the queue are also greater than the \emph{bsf}). 
+Otherwise, if the node is a leaf, the \emph{bsf} is updated if a better answer is found (lines 11-16); if the node is an internal node, its children are added to the queue provided their $lb$ distances are greater than the \emph{bsf} distance (lines 18-21).
+
+\begin{algorithm}[tb]
+	{\scriptsize
+		\caption{{\color{myred}\underline{\underline{delta}}}{\color{myblue}\underline{Epsilon}}NN({$\bm{S_Q}$},{$\bm{idx}$},{$\bm{\delta}$},{$\bm{\epsilon}$}, {$\bm{F_Q(.)}$})}
+		\begin{algorithmic}[1]
+			%\Comment{query $q$ and index $idx$}	
+			\\{$\bm{bsf.dist}$} $\gets$ $\infty$ ; {$\bm{bsf.node}$} $\gets$ $NULL$;			
+			\Statex	 {\color{myred}\underline{\underline{${\bm {r_\delta(Q)}}$  $\gets$ calcDeltaRadius({$\bm{S_Q}$},{$\bm{\delta}$}, {$\bm{F_Q(.)}$})}}}; 
+			\\{$\bm{bsf}$} $\gets$ {\color{mygreen}\dashuline{ng-approxNN}}({{$\bm{S_Q}$},$\bm{idx}$}); 		
+			\\add {$\bm{bsf}$} to {$\bm{pqueue}$};
+			\For {each {{$\bm{rootNode}$} in {$\bm{idx}$} }}         
+			\State{$\bm{result.node}$} $\gets$ {$\bm{rootNode}$};
+			\State{$\bm{result.dist}$} $\gets$ calcMinDist({$\bm{S_Q}$},{$\bm{rootNode}$});			
+			\State{push $\bm{result}$ to $\bm{pqueue}$} 
+			\EndFor
+			\While{ {$\bm{result}$} $\gets$ pop next node from {$\bm{pqueue}$ } } 
+			\State{$\bm{n}$} $\gets$ {$\bm{result.node}$};
+			\If { {$\bm{n.dist}$} $>$ {$\bm{bsf.dist}{\color{myblue}\underline{/(1+\epsilon)}}$}} 
+			break;
+			\EndIf                 
+			\If {{$\bm{n}$} is a leaf}    \Comment{a leaf node}     
+			\For {each {{$\bm{S_C}$} in {$\bm{n}$} }}         
+			\State {$\bm{realDist}$} $\gets$ calcRealDist({$\bm{S_Q}$},{$\bm{S_C}$});
+			\If { {$\bm{realDist}$} $<$ {$\bm{bsf.dist}$}} 
+			\State {$\bm{bsf.dist}$} $\gets$ {$\bm{realDist}$} ;
+			\State {$\bm{bsf.node}$} $\gets$ {$\bm{n}$};		               
+			\Statex\hspace{2cm}{{\color{myred} \underline{\underline{if { {$\bm{bsf.dist}$} $\leq$ $(1+\epsilon)$ {$\bm {r_\delta(Q)}$}} then exit;}}}}
+			\EndIf                  
+			\EndFor        
+			\Else  \Comment{an internal node}
+			\For {each {{$\bm{childNode}$} in {$\bm{n}$} }}         
+			\State {$\bm{minDist}$} $\gets$ calcMinDist({$\bm{S_Q}$},{$\bm{childNode}$});
+			\If { {$\bm{minDist}$} $<$ {$\bm{bsf.dist}{\color{myblue}/\underline{(1+\epsilon)}}$}} add
+			\State {$\bm{childNode}$} to {$\bm{pqueue}$ } with priority {$\bm{minDist}$}; 
+			\EndIf                  
+			\EndFor        
+			\EndIf 
+			\EndWhile\label{euclidendwhile}
+			\State \Return {$\bm{bsf}$}%\Comment{The gcd is b}
+		\end{algorithmic}
+		\label{alg:deltaepsilonNN}
+	} % font size
+\end{algorithm}
+
+
+\begin{comment}
+\begin{algorithm}
+\caption{{\color{myred}\underline{\underline{delta}}}{\color{myblue}\underline{Epsilon}}NN({$\bm{S_Q}$},{$\bm{idx}$},{$\bm{\delta}$},{$\bm{\epsilon}$}, {$\bm{F_Q(.)}$})}
+\begin{algorithmic}[1]
+%\Comment{query $q$ and index $idx$}
+\\{$\bm{pqueue}$} $\gets$ initialize a priority queue with the root node(s) of {$\bm{idx}$}; {\color{myred}\underline{\underline{${\bm {d^Q_\delta}}$  $\gets$ calcDQDelta({$\bm{S_Q}$},{$\bm{\delta}$}, {$\bm{F_Q(.)}$})}}}; 
+\\{$\bm{bsf.dist}$} $\gets$ $\infty$ ; 
+\\{$\bm{bsf.node}$} $\gets$ $NULL$;		
+\\{$\bm{bsf}$} $\gets$ {\color{mygreen}\dashuline{ng-approxNN}}({{$\bm{S_Q}$},$\bm{idx}$}); 		
+\\add {$\bm{bsf}$} to {$\bm{pqueue}$};
+\While{ {$\bm{node}$} $\gets$ pop next node from {$\bm{pqueue}$ } } 
+\If { calcMinDist({$\bm{S_Q}$},{$\bm{node}$}) $>$ {$\bm{bsf.dist} {\color{myblue}\underline{/(1+\epsilon)}}$ }}  
+break;
+\EndIf                 
+\If {{$\bm{node}$} is a leaf}    \Comment{a leaf node}     
+\For {each {{$\bm{S_C}$} in {$\bm{node}$} }}         
+\State {$\bm{realDist}$} $\gets$ calcRealDist({$\bm{S_Q}$},{$\bm{S_C}$});
+\If { {$\bm{realdist}$} $<$ {$\bm{bsf.dist}$}} 
+\State {$\bm{bsf.dist}$} $\gets$ {$\bm{realDist}$} ;
+\State {$\bm{bsf.node}$} $\gets$ {$\bm{node}$};
+\Statex\hspace{2cm}{{\color{myred} \underline{\underline{if { {$\bm{bsf.dist}$} $\leq$ $(1+\epsilon)$ {$\bm {d^Q_\delta}$}} then break;}}}}
+\EndIf                  
+\EndFor        
+\Else  \Comment{an internal node}
+\For {each {{$\bm{childNode}$} in {$\bm{node}$} }}         
+\State {$\bm{minDist}$} $\gets$ calcMinDist({$\bm{S_Q}$},{$\bm{childNode}$});
+\If { {$\bm{minDist}$} $<$ {$\bm{bsf.dist}{\color{myblue}/\underline{(1+\epsilon)}}$} } 
+\State add {$\bm{childNode}$} to {$\bm{pqueue}$ } with priority \State {$\bm{minDist}$}; 
+\EndIf                  
+\EndFor        
+\EndIf 
+\EndWhile\label{euclidendwhile}
+\State \Return {$\bm{bsf}$}%\Comment{The gcd is b}
+\end{algorithmic}
+\label{alg:deltaepsilonNN}
+\end{algorithm}
+\end{comment}
+
+We can use Algorithm~\ref{alg:exactNN} for $ng$-approximate search, by visiting one leaf and returning the first \emph{bsf}. 
+%This $ng$-approximate answer is depicted in Figure~\ref{fig:approxNN} with $S_{ng}$: it can be anywhere between the inner and outer spheres. 
+This $ng$-approximate answer can be anywhere in the data space
+% between the inner and outer spheres. 
+%The inner sphere has radius $d_x$, which is equal to the distance between the query $S_Q$ and its exact NN $S_x$. 
+%The outer sphere represents the full data space. 
+
+We extend approximate search in Algorithm~\ref{alg:exactNN} by introducing two changes: (i) allow the index to visit up to $nprobe$ leaves (user parameter); and (ii) apply the modifications suggested in~\cite{conf/icde/Ciaccia2000} to support $\delta$-$\epsilon$-approximate NN search. 
+The first change is straightforward, so we only describe the second change in Algorithm~\ref{alg:deltaepsilonNN}. 
+%
+%To return the $\epsilon$-approximate NN of $S_Q$, $S_\epsilon$ (falls between the inner and dashed spheres in Figure~\ref{fig:approxNN}), {\bf\emph{bsf.dist}} is replaced with {\bf\emph{bsf.dist$/(1+\epsilon)$}} in lines 10 and 20.  
+%
+To return the $\epsilon$-approximate NN of $S_Q$, $S_\epsilon$, {\bf\emph{bsf.dist}} is replaced with {\bf\emph{bsf.dist$/(1+\epsilon)$}} in lines 10 and 20.  
+%To return the $\delta$-$\epsilon$-approximate NN of $S_Q$, $S_{\delta\epsilon}$ (falls between the inner and dotted spheres in Figure~\ref{fig:approxNN}), we also modify lines 1 and 16.
+%To return the $\delta$-$\epsilon$-approximate NN of $S_Q$, $S_{\delta\epsilon}$ (falls with probability $\delta$ between the inner and dashed spheres in Figure~\ref{fig:approxNN}), we also modify lines 1 and 16.
+To return the $\delta$-$\epsilon$-approximate NN of $S_Q$, $S_{\delta\epsilon}$, we also modify lines 1 and 16.
+
+The distance $r_\delta(Q)$ is initialized in line 1 using $F_Q(\cdot)$, $S_Q$ and $\delta$. $F_Q(\cdot)$ represents the relative distance distribution of $S_Q$. 
+Intuitively, $r_\delta(Q)$ is the maximum distance from $S_Q$, such that the sphere with center $S_Q$ and radius $r_\delta(Q)$ is empty with probability $\delta$. 
+As proposed in~\cite{conf/pods/Ciaccia1998}, we use $F(\cdot)$, the overall distance distribution, instead of $F_Q(\cdot)$ to estimate $r_\delta(Q)$. 
+The delta radius $r_\delta(Q)$ is then used in line 16 as a stopping condition.
+%Although ${\epsilon}$-approximate nearest neighbor algorithms improve efficiency at the expense of accuracy. The actual loss of accuracy is much smaller than the user-defined tolerance $\epsilon$~\cite{journal/acm/Arya1998}. To answer herefore, a probabilistic algorithm called PAC-NN~\cite{conf/icde/Ciaccia2000} has been proposed to return $\epsilon$-approximate answers whose accuracy is close to the tolerated threshold, by introducing a stopping condition based on distance distributions. 
+When  $\delta = 1$, Algorithm~\ref{alg:deltaepsilonNN} returns $S_{\delta\epsilon}$, the $\epsilon$-approximate NN of $S_Q$, and when $\delta = 1$ and $\epsilon=0$, Algorithm~\ref{alg:deltaepsilonNN} becomes equivalent to Algorithm~\ref{alg:exactNN}, i.e., it returns $S_x$, the exact NN of $S_Q$. 
+Our implementations generalize Algorithm~\ref{alg:deltaepsilonNN} to the case of $k \ge 1$. 
+These modifications are straightforward and omitted for the sake of brevity. 
+A proof of correctness for Algorithm~\ref{alg:deltaepsilonNN} can be found in~\cite{conf/icde/Ciaccia2000,conf/sisap/ciaccia17} for $k = 1$ and $k \ge 1$, respectively.
+ 
+
+
+\begin{comment}
+
+\begin{lem} \label{lem:appmatch}
+	Given an index $\bm{idx}$, constructed using a conservative and recursive partitioning technique, a query $\bm{S_Q}$, and $\bm{\epsilon \geq 0}$, Algorithm~\ref{alg:exactNN} returns $\bm{S_\epsilon}$, the $\epsilon$-approximate nearest neighbor of $S_Q$, if lines 10 and 20 are modified by replacing {$\bm{bsf.dist}$} with {$\bm{bsf.dist/(1+\epsilon)}$}.
+\end{lem}
+
+
+Below, we propose a formal proof of correctness (Lemma \ref{lem:appmatch}) for Algorithm\label{alg:deltaepsilonNN}. We provide a proof for $epsilon$-approximate search, i.e., $delta = 1$ and $r_\delta(Q) = \infty$ since a proof for $delta$-$epsilon$-approximate search appears in\cite{conf/icde/Ciaccia2000}
+
+\begin{proof}
+We will prove Lemma~\ref{lem:appmatch} by contradiction. First, consider the query $S_Q$, the index $idx$, the series $S_C$, which is the exact nearest neighbor of $S_Q$, and the series $S_C'$ returned by the modified Algorithm~\ref{alg:exactNN}. Distances $d$ and $d'$ denote $d(S_Q,S_C)$ and $d(S_Q,S_C')$ respectively. Suppose that $S_C'$ is not the ${\epsilon}$-approximate nearest neighbor of $S_Q$, therefore $d' > (1+\epsilon)d$, according to Definition~\ref{def:epsmatch}. Since Algorithm~\ref{alg:exactNN} returns $S_C'$ and not $S_C$, there exist two scenarios: 1) $S_C'$ was processed before $S_C$ or 2) $S_C$ was processed before $S_C'$. In scenario 1, $S_C$ was filtered out by the algorithm when bsf.dist was equal to $d'$. This could only have happened in either line 7 or 17 so $minDist(S_Q, N_C) >= d' / (1+\epsilon)$, $N_C$ being the node containing $S_C$. Since $d >= minDist(S_Q, N_C)$ and both $d$ and $\epsilon$ are positive, then $d >= d'/(1+\epsilon)$, so $d' \leq (1+\epsilon) d$ and $d' > (1+\epsilon)d$, so $d > (1+\epsilon)d$. Since $d$ is positive, then $1 > 1+\epsilon$ but this contradicts with $\epsilon \geq 0$. In scenario 2, there exist another series $S_C''$ which was the $bsf$ when $S_C$ was filtered out ($bsf.dist = d(S_Q, S_C'') = d'')$. Again, this would have happened in lines 7 or 17, thus $minDist(S_Q, N_C) >= d''$
+
+\end{proof}
+
+\begin{proof}
+	First, consider the query $S_Q$, the index $idx$, the series $S_C$, which is the exact nearest neighbor of $S_Q$, and the series $S_\epsilon$ returned by Algorithm~\ref{alg:deltaepsilonNN}. $S_\epsilon$ can be located anywhere in the blue region of Figure~\ref{fig:approxNN} (including the boundaries). Distances $d$ and $d'$ denote $d(S_Q,S_C)$ and $d(S_Q,S_C_\epsilon)$ respectively. Since Algorithm~\ref{alg:deltaepsilonNN} returns $S_\epsilon$ and not $S_C$, there exist two scenarios: 1) $S_\epsilon$ was processed before $S_C$; or 2) $S_C$ was processed before $S_\epsilon$. In scenario 1, $S_C$ was filtered out by the algorithm when $bsf.dist$ was equal to $d'$. This could only have happened in either line 10 or 20 so $minDist(S_Q, N_C) >= d' / (1+\epsilon)$, $N_C$ being the node containing $S_C$. Since $d >= minDist(S_Q, N_C)$ and both $d$ and $\epsilon$ are positive, then $d >= d'/(1+\epsilon)$, so $d' \leq (1+\epsilon) d$. 
+	Therefore, according to Definition~\ref{def:epsmatch}, $S_\epsilon$ is  the ${\epsilon}$-approximate nearest neighbor of $S_Q$. In scenario 2, the
+	re exist another series $S''_\epsilon$ which was the $bsf$ when $S_C$ was filtered out ($bsf.dist = d(S_Q, S''_\epsilon) = d'')$. Again, this would have happened in lines 10 or 20, thus $minDist(S_Q, N_C) >= d'' / (1+\epsilon)$, so $d >= d'' / (1+\epsilon)$ so $d'' \leq (1+\epsilon)d$. Since, the algorithm returns $S'_\epsilon$ and not $S''_\epsilon$, then $d' < d''$, so $d' < (1+\epsilon)d$. Again, according to Definition~\ref{def:epsmatch}, it follows that $S'_\epsilon$ is  the ${\epsilon}$-approximate nearest neighbor of $S_Q$.
+	
+\end{proof}
+
+%{\color{red}
+%Based on~\cite{conf/isasd/samet1995}, we extend Algorithm~\ref{alg:exactNN} to make it incremental (Algorithm~\ref{alg:exactIncrNN}). Add pseudocode and proof for approx k-NN.
+
+% Do we want to make it incremental since it relies on mindist? 
+% Maybe we should add experiments comparing scheduling policies: mindist vs maxdist since maxdist has been shown to be better for approx-kNN? Can we use maxdist for the exact indexes?
+% Discuss the results in these papers: Maxdist node scheduling is more optimal than mindist for approx-kNN  ~\cite{journal/jda/bustos04,conf/sisap/ciaccia17}
+% while mindist is more optimal for exact-kNN ~\cite{conf/pods/berchtold1997,conf/isasd/samet1995}
+
+\end{comment}
+
+
+
+
+
+
+
+
+
+
+
+
+
+\begin{figure}[tb]
+	\centering
+	\captionsetup{justification=centering}
+	%\includegraphics[scale =0.46]{deltaEpsilonNN_Proof_v7.pdf}
+	%\caption{$\delta$-$\epsilon$-Approximate NN search.}
+	%\label{fig:approxNN}
+	%\vspace*{0.4cm}
+	\includegraphics[width=\columnwidth]{taxonomy_journal_v10.pdf}
+	\caption{{\color{black} Taxonomy of similarity search methods.}}
+	\vspace*{-0.2cm}
+	\label{fig:taxonomy}
+\end{figure}
+
+
+
+
+
+
+\subsection{Taxonomy of Similarity Search Methods}
+Figure~\ref{fig:taxonomy} presents a taxonomy of similarity search methods based on the type of guarantees they provide (methods with multiple types of guarantees are included in more than one leaf of the taxonomy).
+We call probabilistic the general $\delta$-$\epsilon$-approximate methods. 
+%include both probabilistic approximate methods with $\delta$-approximate guarantees,
+% ADS+, DSTree, iSAX2+, MTree, SRS, VA+file, 
+When $\delta =1$ we have the $\epsilon$-approximate methods.
+%: ADS+, DSTree, iSAX2+, MTree, VA+file.
+Setting $\delta=1$ and $\epsilon=0$, we get the exact methods. %ADS+, DSTree, iSAX2+, MTree, MASS, RTree, Stepwise, UCR-Suite, VA+file. 
+Finally, methods that provide no guarantees are categorized under ng-approximate. 
+%Those include: ADS+, DSTree, HNSW, IMI, iSAX2+, VA+file.
+Here, {\color{black} we cover 7 state-of-the-art methods from the high-dimensional literature, Flann, HD-index, HNSW, IMI, NSG, QALSH and SRS, as well as the 3 best methods from the data series community~\cite{journal/pvldb/echihabi2018}, iSAX2+, DSTree and VA+file. %\sout{we only concentrate on the highest performing disk-based algorithms, skipping methods like: MTree~\cite{conf/vldb/Ciaccia1997}, MASS~\cite{code/Mueen2017}, and Stepwise~\cite{conf/kdd/Karras2011}. Moreover, we also skip UCR-Suite~\cite{conf/kdd/Mueen2012} as it is designed for a different problem, and ADS+ as it belongs to the iSAX family, covered by iSAX2+.}
+}
+
+
+
+
+
+
+
+
+
+

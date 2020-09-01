@@ -1,0 +1,35 @@
+#eps 10 delta 1
+
+sudo sync;
+sudo sh -c "echo 3 >> /proc/sys/vm/drop_caches";
+#./srs --mode 1  --timeseries-size 256 --index-path index_10GB/ --projected-dim 16 --dataset-size 10000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin  --queries-size 100 --epsilon 10 --delta 0.9 > 10GB_queries_eps10_delta0.9.out
+
+#eps 10 delta 1
+
+sudo sync;
+sudo sh -c "echo 3 >> /proc/sys/vm/drop_caches";
+#./srs --mode 1  --timeseries-size 256 --index-path index_100GB_m10/ --projected-dim 10 --dataset-size 100000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin  --queries-size 100 --epsilon 5 --delta 0.9 > 100GB_m10_queries_eps10_delta0.9.out
+
+./srs --mode 1  --timeseries-size 256 --index-path index_100GB/ --projected-dim 16 --dataset-size 100000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin  --queries-size 100 --epsilon 10 --delta 0.9 > 100GB_queries_eps10_delta0.9.out
+./srs --mode 1  --timeseries-size 256 --index-path index_250GB/ --projected-dim 16 --dataset-size 250000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin  --queries-size 100 --epsilon 10 --delta 0.9 > 250GB_queries_eps10_delta0.9.out
+
+#eps 5 delta 1
+sudo sync;
+sudo sh -c "echo 3 >> /proc/sys/vm/drop_caches";
+./srs --mode 1  --timeseries-size 256 --index-path index_100GB/ --projected-dim 16 --dataset-size 100000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin  --queries-size 100 --epsilon 5 --delta 0.9 > 100GB_queries_eps5_delta0.9.out
+./srs --mode 1  --timeseries-size 256 --index-path index_250GB/ --projected-dim 16 --dataset-size 250000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin --queries-size 100 --epsilon 5 --delta 0.9 > 250GB_queries_eps5_delta0.9.out
+
+#eps 1 delta 1
+sudo sync;
+sudo sh -c "echo 3 >> /proc/sys/vm/drop_caches";
+./srs --mode 1  --timeseries-size 256 --index-path index_100GB/ --projected-dim 16 --dataset-size 100000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin --queries-size 100 --epsilon 1 --delta 0.9 > 100GB_queries_eps1_delta0.9.out
+./srs --mode 1  --timeseries-size 256 --index-path index_250GB/ --projected-dim 16 --dataset-size 250000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin  --queries-size 100 --epsilon 1 --delta 0.9 > 250GB_queries_eps1_delta0.9.out
+
+
+#eps 0 delta 1
+sudo sync;
+sudo sh -c "echo 3 >> /proc/sys/vm/drop_caches";
+./srs --mode 1  --timeseries-size 256 --index-path index_100GB/ --projected-dim 16 --dataset-size 100000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin  --queries-size 100 --epsilon 0 --delta 0.9 > 100GB_queries_eps0_delta0.9.out
+./srs --mode 1  --timeseries-size 256 --index-path index_250GB/ --projected-dim 16 --dataset-size 250000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --queries $DATASETS/queries_size100_seed14784_len256_znorm.bin  --queries-size 100 --epsilon 0 --delta 0.9 > 250GB_queries_eps0_delta0.9.out
+
+

@@ -1,0 +1,2624 @@
+\section{Experimental Evaluation}
+\label{sec:experiments}
+{\color{black}
+We assessed all methods on the same framework. 
+Source code, datasets, queries, and all results are available in~\cite{url/DSSeval2}.
+
+
+
+
+
+
+
+
+
+
+\vspace{1cm}
+
+
+
+\subsection{Experimental Setup}
+\label{subsec:framework}
+\label{subsec:environment}
+
+\noindent{\bf Environment.} 
+All methods were compiled with GCC 6.2.0 under Ubuntu Linux 16.04.2 with their default compilation flags; optimization level was set to 2. 
+Experiments were run on a server with two Intel Xeon E5-2650 v4 2.2GHz CPUs,
+%(30MB cache, 12 cores, 24 hyper-threads),
+%384GB of RAM (12 x 32GB RDIMM, 2400 MT/s)
+75GB\footnote{We used GRUB to limit the amount of RAM, so that all methods are forced to use the disk. Note that GRUB prevents the operating system from using the rest of the RAM as a file cache, which is what we wanted for our experiments.} of RAM, 
+%(RDIMM 2400 MT/s), 
+and 10.8TB (6 x 1.8TB) 10K RPM SAS hard drives 
+%(12Gbps) 
+in RAID0 with a throughput of 1290 MB/sec.
+%The second machine, called \emph{SSD}, is a server with two Intel Xeon E5-2650 v4 2.2Ghz CPUs, 
+%(30MB cache, 12 cores, 24 hyper-threads) {\bf ??? do we need the parenthesis? ???}, 
+%256 (8 x 32GB) RDIMM 2400 MT/s RAM, 
+%75GB of RAM, 
+%(RDIMM 2400 MT/s), 
+%and 3.2TB (2 x 1.6TB) SATA2 SSD in RAID0.
+%The throughput of the RAID0 array is 330 MB/sec.
+%All our algorithms are single-core implementations. 
+%, while we deliberately limited the available RAM for all experiments to 75GB in order to force methods use the hard disk.
+%We used GRUB settings to limit RAM, in order prevent the operating system from using the rest of it as a file cache, thus influencing our experiments.
+% We will explain this phenomenon in detail later in this section.
+
+%\noindent{\textbf{Scope.}}
+%This work concentrates on approximate whole-matching (WM) k-NN queries, including $ng$-approximate, $\epsilon$-approximate, and $\delta$-$\epsilon$-approximate queries. 
+%%Extending our experimental framework to cover subsequence matching and range queries is straight-forward, and part of our future work. 
+
+\noindent{\textbf{Algorithms.}}
+We use the most efficient C/C++ implementation available for each method: %~\cite{url/hnsw,url/srs,url/faiss} and re-implemented in C (from scratch) methods that were available in other languages~\cite{url/DSSeval2}. 
+%On all tested datasets, our new implementations achieve higher time and space efficiency than the original ones (see Appendix). 
+%We study both exact data series methods %(DSTree~\cite{conf/vldb/Wang2013}, iSAX2+~\cite{journal/kais/Camerra2014}, VA+file~\cite{conf/cikm/Hakan2000}) and approximate methods designed for vectors (HNSW~\cite{journal/corr/malkov16}, the Inverted Multi-Index (IMI), iSAX2+, SRS ). These methods all support the Euclidean distance and are described in detail in Section~\ref{sec:approaches}.
+iSAX2+~\cite{url/DSSeval}, DSTree~\cite{url/DSSeval} and VA+file~\cite{url/DSSeval} representing exact data series methods with support for approximate queries; and HNSW~\cite{url/hnsw}, Faiss IMI~\cite{url/faiss}, SRS~\cite{url/srs}, {\color{black} FLANN~\cite{flann}, and QALSH~\cite{qalsh} representing strictly approximate methods for vectors. We ran experiments with the HD-index~\cite{hdindex} and NSG~\cite{nsg}, but since they could not scale for our smallest 25GB dataset, we do not report results for them.}
+%All these methods support Euclidean distance and are described in Section~\ref{sec:approaches}. 
+%We used the most efficient implementations that we are aware of for each method,
+% our C implementations for DSTree, iSAX2+ and VA+file~\cite{url/DSSeval2}, the original code bases for HNSW~\cite{url/hnsw} and SRS~\cite{url/srs}, and the Faiss version of IMI~\cite{url/faiss}. 
+We extended DSTree, iSAX2+ and VA+file with Algorithm~\ref{alg:deltaepsilonNN}, approximating $r_{\delta}$ with density histograms on a 100K data series sample, following the C++ implementation of~\cite{conf/icde/Ciaccia2000}. 
+All methods are single core implementations, except for HNSW and IMI that make use of multi-threading and SIMD vectorization. 
+%IMI additionally exploits the BLAS library and popcount. 
+% bring back for camera ready!: We allow each method to leverage its full functionalities. % and we use various metrics, including implementation-independent ones, to guard against bias.
+%Our baseline is the Euclidean distance version of the UCR Suite~\cite{conf/kdd/Mueen2012}.
+%This is a set of techniques for performing very fast similarity computation scans.
+%These optimizations include: a) avoiding the computation of square root on Euclidean distance, b) early abandoning of Euclidean distance calculations, and c) reordering early abandoning on normalized data\footnote{Early abandoning of Z-normalization is not used since all datasets were normalized in advance.}.
+%We used these optimizations on all the methods that we examined.
+Data series points are %always 
+represented using single precision values and methods based on fixed summarizations use 16 dimensions. 
+%The same set of known optimizations for data series processing are applied to all methods.
+
+\noindent{\textbf{Datasets.}}
+We use synthetic and real datasets. Synthetic datasets, called $Rand$, were generated as random-walks using a summing process with steps following a Gaussian distribution (0,1). 
+Such data model financial time series~\cite{conf/sigmod/Faloutsos1994} and have been widely used in the literature~\cite{conf/sigmod/Faloutsos1994,journal/kais/Camerra2014,conf/kdd/Zoumpatianos2015}. 
+Our four real datasets cover domains as varied as deep learning, computer vision, seismology, and neuroscience. %The astronomy dataset, \emph{Astro100GB}, contains 100 million data series of size 256 representing celestial objects~\cite{journal/aa/soldi2014}. 
+\emph{Deep1B}~\cite{url/data/deep1b} comprises 1 billion vectors of size 96 extracted from the last layers of a convolutional neural network. 
+\emph{Sift1B}~\cite{conf/icassp/jegou2011,url/data/sift} consists of 1 billion SIFT vectors of size 128 representing image feature descriptions. 
+To the best of our knowledge, these two vector datasets are the largest publicly available real datasets. 
+\emph{Seismic100GB}~\cite{url/data/seismic}, contains 100 million data series of size 256 representing earthquake recordings at seismic stations worldwide. 
+\emph{Sald100GB}~\cite{url/data/eeg} contains neuroscience MRI data and includes 200 million data series of size 128. 
+%We, thereafter, refer to the size of each dataset in GB instead of the number of data series. 
+In our experiments, we vary the size of the datasets from 25GB to 250GB. 
+The name of each dataset is suffixed with its size. 
+%For real datasets, whenever we use the full original size, we refer to the dataset in its original name, for example, Deep1B, otherwise we state the subset size in GB in the suffix. 
+%for example Deep25GB is the top 25GB subset of Deep1B.
+We do not use other real datasets that have appeared in the literature~\cite{UCRArchive,conf/sisap/martin17}, because they are very small, not exceeding 1GB in size. 
+
+
+\noindent{\textbf{Queries.}}
+%unless otherwise stated, 
+All our query workloads consist of 100 query series run asynchronously, i.e., not in batch mode. 
+Synthetic queries were generated using the same random-walk generator as the $Rand$ dataset (with a different seed, reported in~\cite{url/DSSeval2}). 
+%while $Synth$-$Ctrl$ queries are created by extracting data series from the input data set and adding progressively larger amounts of noise, in order to control the difficulty of each query (more difficult queries tend to be less similar to their nearest neighbor~\cite{johannesjoural2018}).
+For the Deep1B and Sift1B datasets, we randomly select 100 queries from the real workloads that come with the datasets archives. For the other real datasets, query workloads were generated by adding progressively larger amounts of noise to data series extracted from the raw data, so as to produce queries having different levels of difficulty, following the ideas in~\cite{johannesjoural2018}. 
+%(the less similar a query to its nearest neighbor, the harder it is~\cite{johannesjoural2018}). 
+Our experiments cover $ng$-approximate and $\delta$-$\epsilon$-approximate k-NN queries, where k $\in [1,100]$. We also include results for exact queries to serve as a yardstick. 
+% to be included in the camera ready version!: {\color{black} All datasets and queries are z-normalized to allow efficient similarity search~\cite{journal/dmkd/Keogh2003}}. 
+
+\noindent{\textbf{Scenarios.}}
+{\color{black}Our experimental evaluation proceeds in four main steps: 
+%parametrization, evaluation, comparison of all methods and a more detailed comparison of the best disk-based methods. 
+(i) we tune methods to their optimal parameters (\S\ref{ssec:parametrization}); (ii) we evaluate the indexing scalability of the methods
+% against datasets of various sizes
+(\S\ref{ssec:indexing_efficiency}); (iii) we compare in-memory and out-of-core scalability and  accuracy of all methods (\S\ref{ssec:query_efficiency_mem}-\S\ref{ssec:query_efficiency_disk}); and (iv) we perform additional experiments on the best performing methods for disk-resident data (\S\ref{ssec:query_efficiency_disk})}. 
+
+
+\noindent{\textbf{Measures.}} We assess methods using the following criteria:
+
+\noindent(1) Scalability and search efficiency using: \emph{wall clock time} (input, output, CPU  and total time), \emph{throughput} (\# of queries answered per minute), and two implementation-independent measures: the \emph{number of random disk accesses} (\# of disk seeks) and the \emph{percentage of data accessed}. 
+%\emph{Wall clock time} measures input, output and total execution times (CPU time is calculated as by subtracting I/O time from the total time). 
+%The \emph{throughput} is the number of queries that can be answered in one minute. 
+%The \emph{number of random disk accesses} represents the number of leaf accesses for disk-based indexes, and the number of skips for skip-sequential access methods. 
+%To assess the number of sequential I/O accesses, we also report the \emph{percent of data accessed} which corresponds to the fraction of the dataset that is accessed by an algorithm to answer a given query. 
+%As will be evident in the results, our measure of random disk accesses provides a good insight into the actual performance of indexes, even though we do not account for details such as caching, the number of disk pages occupied by a leaf and the numbers of leaves in contiguous disk blocks.
+
+\noindent(2) Search accuracy is assessed using: \emph{Avg\_Recall}, \emph{Mean Average Precision (MAP)}, and \emph{Mean Relative Error (MRE)}. Recall is the most commonly used accuracy metric in the approximate similarity search literature. However, since it does not consider rank accuracy, we also use MAP~\cite{conf/sigir/turpin2006} that is popular in information retrieval~\cite{book/manning2008,conf/sigir/buckley2000} {\color{black} and has been proposed recently in the high-dimensional community~\cite{hdindex} as an alternative accuracy measure to recall}. 
+For a workload of queries $S_{Q_i} : i \in [1, N_Q]$, these are defined as follows.
+\begin{compactitem}
+\item $Avg\_Recall(workload) = \sum_{i=1}^{N_Q} Recall(S_{Q_i}) / N_Q $ 
+{\color{black}\item $MAP(workload) = \sum_{i=1}^{N_Q} AP(S_{Q_i}) / N_Q $}
+\item $MRE(workload) = \sum_{i=1}^{N_Q} RE(S_{Q_i}) / N_Q $
+\end{compactitem}
+where:  
+
+\noindent$\bullet$  
+$Recall(S_{Q_i}) = \frac{\textit{\# true neighbors returned by }{Q_i}}{k}$
+
+\noindent$\bullet$  
+$AP(S_{Q_i}) = \frac {\sum_{r=1}^{k} (P(S_{Q_i,r}) \times rel(r))} {k}, \forall i \in [1,N_Q]$ 
+
+$-$  
+$P({S_{Q_i}},r) = \frac {\text{\# true neighbors among the first $r$ elements}} {r}$.
+%Intuitively, $P(S_{Q_i},r)$ is the precision of query $S_{Q_i}$ at rank $r$ and 
+
+$-$ $rel(r)$ is equal 1 if the neighbor returned at position $r$ 
+
+is one of the $k$ exact neighbors of $S_{Q_i}$ and 0 otherwise.
+	
+\noindent$\bullet$  
+$RE(S_{Q_i}) = \frac{1}{k} \times \sum_{r=1}^{k} \frac {d(S_{Q_i},S_{C_{r}}) - d(S_{Q_i},S_{C_i})} {d(S_{Q_i},S_{C_i})}$. 	
+$S_{C_i}$ is the exact nearest neighbor of $S_{Q_i}$ and $S_{C_{r}}$ is the $r$-th NN retrieved\footnote{Note that in Definition~\ref{def:epsmatch}, $\epsilon$ is an upper bound on $RE(S_{Q_i})$.}.
+Without loss of generality, we do not consider the case where $d(S_{Q_i},S_{C_i}) = 0$. 
+(i.e., range queries with radius zero, or kNN queries where the 1-NN is the query itself\footnote{In these cases, the MRE definition can be extended to use the symmetric mean absolute percentage error~\cite{journal/omega/Flores1986}.}.) 
+%Also, we do not consider the absolute value since the retrieved neighbor cannot be closer to the query than its exact neighbor.
+
+
+
+\noindent(3) Size, using the \emph{main memory} footprint of the algorithm.
+
+\noindent{\textbf{Procedure.}}
+Experiments involve two steps: index building and query answering. Caches are fully cleared before each step, and stay warm between consecutive queries.
+For large datasets that do not fit in memory, the effect of caching is minimized for all methods. 
+All experiments use workloads of 100 queries. 
+Results reported for workloads of 10K queries are extrapolated: we discard the $5$ best and $5$ worst queries of the original 100 (in terms of total execution time), and multiply the average of the 90 remaining queries by 10K. 
+
+\begin{comment}
+of In order to evaluate scalability and search efficiency, we use \emph{wall clock time}, and two implementation-independent measures: the \emph{number of random disk accesses} -For kNN: Report the incremental times for answering the NNs, i.e. time to answer 1st NN, then the additional time to answer the 2nd NN and so on. \\
+-Verify if delta-epsilon holds for kNN, if so, add proof \\
+-add MAP@k measure to compare the order of the NNs (as in HD-index \cite{journal/pvldb/arora2018}:
+-Report the percentage of neighbors colocated in the same leaf for the different indexes: it should be higher for indexes with better clustering.
+-Report Recall@R = the rate of queries for which true NN is present in a short list of length R. 
+-compare recall and throughput vs. maxpoints accessed. (For SRS, use early termination test)
+-For accuracy, use the average relative error  and contrat to the overall ratio defined in used in \cite{journal/tods/tao2010,journal/pvldb/arora2018}
+-Add a footnote saying we use recall@1. Mention literature usage of recall@R\cite{journal/tpami/jegou2011} and precise that recall@1 is a more sensitive measure. \\
+-Do not vary index parameters in plots\\
+-Discuss that ann-benchmakrs do this, but for us, large datasets, it is not feasible.\\
+-Also add extra time on top of approximate to get exact answer.
+
+\end{comment}
+
+
+%\noindent3. We also consider the pruning ratio $P$, which has been widely used in the data series literature \cite{journal/kais/Keogh2001,journal/edbt/Schafer2012,conf/vldb/Wang2013,conf/vldb/Ding2008,conf/kdd/Karras2011} as an implementation-independent measure to compare the effectiveness of an index. It is defined as follows: 
+%\[P \ = \ 1-\frac{\# \ of \ Raw \ Data \ Series \ Examined}{\# \ of \ Data \ Series \ In \ Dataset} \]
+%\[P_{node} \ = \ 1-\frac{\# \ of \ Leaf \ Nodes \ Examined}{\# \ of \ Leaf \ Nodes \ In \ Index} \]
+%Pruning ratio is a good indicator of the number of sequential I/Os incurred. However, since relevant data series are usually spread out on disk, it should be considered along with the number of random disk accesses (seeks) performed.
+
+%\noindent4. The \emph{tightness of the lower bound}, $TLB$ has been used in the literature as an implementation independent measure in various different forms~\cite{conf/kdd/shieh1998,journal/edbt/Schafer2012,journal/dmkd/Wang2013}.
+    %    the $TLB$ was calculated as follows:
+    % 	   	\[TLB \ = \ \frac{Lower \ Bounding \ Distance (Q\prime, C\prime)}{ True \ Distance(Q, C)}  \]
+		% Such that $Q$ and $C$ are two data series randomly sampled from the dataset 1000 times (with replacement), $Q\prime$ is the PAA or DFT representation of the query $Q$ and $C\prime$ is the SAX or SFA representation of $C$. It was not explicitly stated whether the minimum, maximum or average value of the $TLB$ is reported.
+    % 	 	Whereas in \cite{journal/dmkd/Wang2013}, the $TLB$ was calculated using the formula:
+    % 	   	\[TLB \ = \ \frac{Lower \ Bounding \ Distance (Q\prime, N)}{ Minimum \ True \ Distance(Q, N)}  \]
+    % 	   Such that $Q$ is the query, $Q\prime$ is the representation of $Q$ using the segmentation of a given leaf node $N$ and the minimum true distance between the query $Q$ and the node $N$ is the smallest Euclidean distance between $Q$ and any data series in $N$. Please note that for the DSTree, the first $TLB$ calculation method is not applicable since the segmentation is node-dependent.
+   %      In this work we use the following version of the $TLB$ measure that better captures the performance of indexes:
+   % 	   	\[TLB \ = \ \frac{Lower \ Bounding \ Distance (Q\prime, N)}{ Average \ True \ Distance(Q, N)}  \]
+   % 	   Where $Q$ is the query, $Q\prime$ is the representation of $Q$ using the segmentation of a given leaf node $N$, and the average true distance between the query $Q$ and node $N$ is the average Euclidean distance between $Q$ and all data series in $N$. We report the average over all leaf nodes for all 100 queries.
+
+
+%\ifJournal
+
+%\noindent5. The \emph{accuracy of the approximate search} is measured by $\epsilon_{eff}$ defined as follows.
+%% \begin{defn} \label{def:effepsilon}
+%Given a query data series $S_Q$, an exact match $S_C$ and an approximate match $S_{C_{approx}}$, the \emph{effective error, $\epsilon_{\text{eff}}$} of $S_{C_{approx}}$ is:
+%\[\epsilon_{\text{eff}} = \frac {d(S_Q,S_{C_{approx}}) - d(S_Q, S_C)} {d(S_Q,S_C)} \]
+%{\color{black} For the special case when $d(Q, C_{approx}) - d(Q,C) =0$, the effective error is defined as: \[\epsilon_eff = d(Q, C_{approx}) - d(Q,C) \]}
+% \end{defn}
+% It is noteworthy to point out that the $\epsilon$ in Definition~\ref{def:epsmatch} constitutes an upper bound on the actual approximation error $\epsilon_{eff}$ in Definition~\ref{def:effepsilon}.
+% Without loss of generality, we do not consider the case where $d(Q,C) = 0$.
+% This can happen in range queries with radius zero, or kNN queries where the nearest neighbor is the query point itself.
+% In these cases, the definition for effective error can be modified to use the absolute error instead of the relative error.
+% Also, we do not consider the absolute value since the difference between the approximate and actual distances is always positive.
+
+%Note that $\epsilon_{eff}$ and $TLB$ are different: $TLB$ measures how close the lower bounding distance $d_{lb}$ is to the real distance $d_{exact}$, whereas $\epsilon_{eff}$ measures how close the approximate distance $d_{approx}$ is to $d_{exact}$. 
+%The approximate and lower bounding distances are related as such: 
+%The following inequality holds: 
+%$d_{lb} \ \leq  \ d_{exact} \leq d_{approx}$.
+%\fi
+
+\begin{comment}
+\begin{figure*}[tb]
+	\captionsetup{justification=centering}
+ \begin{subfigure}{\textwidth}
+	\centering
+  	\hspace{0.5cm}
+  	\includegraphics[width=0.5\textwidth]{{exact_datasize_time_idxproc_cache_legend.png}}
+  \end{subfigure}	\captionsetup[subfigure]{justification=centering}
+%\begin{subfigure}{0.31\textwidth}
+\hspace*{\fill} % separation between the subfigures
+\hspace*{\fill} % separation between the subfigures
+
+\begin{subfigure}{0.16\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {exact_leafsize_time_idxproc_ads+}
+	\caption{ADS+\\ Dataset = 100GB}
+	\label{fig:exact:leafsize:time:idxproc:ADS+}
+\end{subfigure}
+%\hspace*{\fill} % separation between the subfigures
+%\begin{subfigure}{0.31\textwidth}
+\begin{subfigure}{0.16\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{exact_leafsize_time_idxproc_dstree}
+	\caption{DSTree\\
+	Dataset = 100GB}	
+	\label{fig:exact:leafsize:time:idxproc:dstree}
+\end{subfigure}
+%\hspace*{\fill} % separation between the subfigures
+%\begin{subfigure}{0.31\textwidth}
+\begin{subfigure}{0.16\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_leafsize_time_idxproc_isax2+}}
+	\caption{iSAX2+\\
+	Dataset = 100GB}	
+	\label{fig:exact:leafsize:time:idxproc:iSAX2+}
+\end{subfigure}
+%\begin{subfigure}{0.31\textwidth}
+\begin{subfigure}{0.16\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_leafsize_time_idxproc_m-tree}}
+	\caption{M-tree \\
+	Dataset = 50GB}			
+	\label{fig:exact:leafsize:time:idxproc:mtree}
+\end{subfigure}
+\begin{subfigure}{0.16\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_leafsize_time_idxproc_r-tree}}
+	\caption{R*-tree\\
+	Dataset = 50GB}			
+	\label{fig:exact:leafsize:time:idxproc:rstree}
+\end{subfigure}
+\begin{subfigure}{0.16\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_leafsize_time_idxproc_sfa}}
+	\caption{SFA trie \\
+		Dataset = 100GB}			
+	\label{fig:exact:leafsize:time:idxproc:sfa}
+\end{subfigure}
+
+\caption{Leaf size parametrization}
+%\\(Data Series Length = 256, 100 Exact Queries)
+\label{fig:exact:leafsize:time:idxproc}
+\end{figure*}
+\end{comment}
+
+
+
+\subsection{Results}
+\label{subsec:results}
+
+%This section presents the results of the experimental evaluation for all scenarios defined in the previous subsection.
+%Parametrization, efficiency and scalability test and best methods comparison.
+
+
+
+
+
+
+
+
+
+
+
+
+\subsubsection{\textbf{Parametrization}}
+\label{ssec:parametrization}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Figure: Exact Methods  Parameterization%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{comment}
+\begin{figure*}[tb]
+	\captionsetup{justification=centering}
+		\begin{subfigure}\textwidth}
+		\centering
+			%\begin{subfigure}{0.31\textwidth}
+			%\vspace{-20pt}
+			\centering
+			%\includegraphics[scale=0.3]{exact_leafsize_time_idxproc_r-tree}
+			\includegraphics[scale=0.6] {{exact_leafsize_time_idxproc_cache_legend}}
+			%			{\color{black} x-axis:} Node size (M = (5K,10K,20K,40K) and minimal fillfactor(m=0,0.2,0.3,0.5) \\
+			%			{\color{black} y-axis:} Time in Hours (range TBD) \\
+			%			{\color{black} curves:} Indexing and Query Processing Detailed Times}
+      \label{fig:exact:leafsize:time:idxproc:rstree}
+		\end{subfigure}	\captionsetup[subfigure]{justification=centering}
+	%\begin{subfigure}{0.31\textwidth}
+	\begin{subfigure}{0.05\textwidth}
+		\centering
+		%	\includegraphics[scale=0.90,trim={0 0 0 0},clip]  {{leafsize_y_axis}}					
+		\includegraphics[width=\columnwidth, trim={0 4.2em 0 2.2em},clip] {{leafsize_y_axis}}
+					
+    %\vspace{4.3em}
+	\end{subfigure}
+	\begin{subfigure}{0.15\textwidth}
+		\centering
+		%\includegraphics[scale=0.3] {{exact_leafsize_time_idxproc_ads+}}
+		%\vspace{-20pt}
+		%\hspace{-25pt}
+		\includegraphics[width=\textwidth,trim={0 0 0 2.2em},clip] {{exact_leafsize_time_idxproc_noyaxis_ads+}}
+		\caption{ADS+}
+		\label{fig:exact:leafsize:time:idxproc:ADS+}
+	\end{subfigure}
+	%\hspace*{\fill} % separation between the subfigures
+	%\begin{subfigure}{0.31\textwidth}
+	\begin{subfigure}{0.15\textwidth}
+		\centering
+		%\vspace{-20pt}
+		%\hspace{-50pt}
+		\includegraphics[width=\textwidth,trim={0 0 0 2.2em},clip]{exact_leafsize_time_idxproc_noyaxis_dstree}
+		\caption{DSTree}
+		\label{fig:exact:leafsize:time:idxproc:dstree}
+	\end{subfigure}
+	%\hspace*{\fill} % separation between the subfigures
+	%\begin{subfigure}{0.31\textwidth}
+	\begin{subfigure}{0.15\textwidth}
+		\centering
+		%\vspace{-20pt}
+		%\hspace{-30pt}
+		%\includegraphics[scale=0.3]{{exact_leafsize_time_idxproc_isax2+}}
+		\includegraphics[width=\textwidth,trim={0 0 0 2.2em},clip] {{exact_leafsize_time_idxproc_noyaxis_isax2+}}
+		\caption{iSAX2+}
+		\label{fig:exact:leafsize:time:idxproc:iSAX2+}
+	\end{subfigure}
+	%\begin{subfigure}{0.31\textwidth}
+	\begin{subfigure}{0.15\textwidth}
+				%\vspace{-20pt}
+		%		\hspace{-30pt}
+		\centering
+		%\includegraphics[scale=0.3]{exact_leafsize_time_idxproc_sfa}
+		\includegraphics[width=\columnwidth,trim={0 0 0 2.2em},clip] {{exact_leafsize_time_idxproc_noyaxis_sfa}}
+		\caption{SFA trie}
+		\label{fig:exact:leafsize:time:idxproc:sfa}
+	\end{subfigure}
+	%\hspace*{\fill}
+	%\begin{subfigure}{0.31\textwidth}
+	\begin{subfigure}{0.15\textwidth}
+				%\vspace{-20pt}
+		%\hspace{-30pt}
+		\centering
+		%\includegraphics[scale=0.3]{exact_leafsize_time_idxproc_m-tree}
+		\includegraphics[width=\columnwidth,trim={0 0 0 2.2em},clip] {{exact_leafsize_time_idxproc_noyaxis_m-tree}}
+		\caption{M-tree}
+		\label{fig:exact:leafsize:time:idxproc:mtree}
+	\end{subfigure}
+	%\hspace*{\fill}
+	\begin{subfigure}{0.15\textwidth}
+	%\begin{subfigure}{0.31\textwidth}
+		%\vspace{-20pt}
+		%\hspace{-30pt}
+		\centering
+		%\includegraphics[scale=0.3]{exact_leafsize_time_idxproc_r-tree}
+		\includegraphics[width=\columnwidth,trim={0 0 0 2.2em},clip] {{exact_leafsize_time_idxproc_noyaxis_r-tree}}
+		\caption{R*-tree}
+		%			{\color{black} x-axis:} Node size (M = (5K,10K,20K,40K) and minimal fillfactor(m=0,0.2,0.3,0.5) \\
+		%			{\color{black} y-axis:} Time in Hours (range TBD) \\
+		%			{\color{black} curves:} Indexing and Query Processing Detailed Times}
+		\label{fig:exact:leafsize:time:idxproc:rstree}
+	\end{subfigure}
+
+	%\hspace*{\fill}
+
+	\begin{comment}
+	\begin{subfigure}{0.31\textwidth}
+	\centering
+	\includegraphics[scale=0.3,trim={0 0 0 2.2em},clip]{exact_leafsize_time_idxproc_mass}
+	\caption{MASS}
+	%			{\color{black} x-axis:} Min Length of Join Segment\\
+	%			{\color{black} y-axis:} Time in Hours\\
+	%			{\color{black} curves:} The Query and Pre-Query Times
+%	}
+	\label{fig:exact:leafsize:time:idxproc:mass}
+	\end{subfigure}
+	\hspace*{\fill}
+	\begin{subfigure}{0.31\textwidth}
+	\centering
+	\includegraphics[scale=0.3,trim={0 0 0 2.2em},clip]{{exact_leafsize_time_idxproc_ucr-suite}}
+	\caption{UCR Suite}
+	%			{\color{black} x-axis:} NO PARAMETERS!!\\
+	%			{\color{black} y-axis:} Time in Hours\\
+	%			{\color{black} curves:} The Query and Pre-Query Times		}
+	\label{fig:exact:leafsize:time:idxproc:ucr}
+	\end{subfigure}
+	\hspace*{\fill}
+	\begin{subfigure}{0.31\textwidth}
+	\centering
+	\includegraphics[scale=0.3,trim={0 0 0 2.2em},clip]{exact_leafsize_time_idxproc_Stepwise}
+	\caption{Stepwise}
+	%			{\color{black} x-axis:} \# of TS per File per Level \\
+	%			{\color{black} y-axis:} Time in Hours\\
+	%			{\color{black} curves:} The Query and Pre-Query Times		}
+	\label{fig:exact:leafsize:time:idxproc:Stepwise}
+	\end{subfigure}
+	%\caption{Leaf Size Parameterization}
+  %\\%(Dataset Size = 100 GB, Data Series Length = 256, Buffer Size = 60GB, 100 Exact Queries)
+	%\label{fig:exact:leafsize:time:idxproc}
+\end{figure*}
+\end{comment}
+
+{\color{black}
+%For  ADS+, the leaf size is 100K, the buffer size is 20GB and the number of segments is 16.
+We start by fine tuning each method (graphs omitted for brevity). 
+In order to understand the speed/accuracy tradeoffs, we fix the total memory size available to 75GB. 
+The optimal parameters for DSTree, iSAX2+ and VA+file are set according to~\cite{journal/pvldb/echihabi2018}. 
+For indexing, the buffer and leaf sizes are set to 60GB and 100K, respectively, for both DSTree and iSAX2+. 
+iSAX2+ is set to use 16 segments. 
+VA+file uses a 20GB buffer and 16 DFT symbols. 
+For SRS, we set M (the projected space dimensionality) to 16 so that the representations of all datasets fit in memory. 
+The settings were the same for all datasets. 
+The fine tuning for HNSW and IMI proved more tricky and involved many testing iterations since the index building parameters strongly affect the speed/accuracy of query answering and differ greatly across datasets. 
+For this reason, different parameters were chosen for different datasets. 
+For the in-memory method HNSW, we set efConstruction (the number of neighbors considered during index construction) to 500, and M (the number of bi-directional edges created for every new node during indexing) to 4 for the Rand25GB dataset. 
+{\color{black} For Deep25GB and Sift25GB, we set efConstruction to 500 and M to 16}.
+To tune the Faiss implementation of IMI, we followed the guidelines in~\cite{url/faiss}. 
+For the in-memory datasets, we set the index factory key to PQ32\_128,IMI2x12,PQ32 and the training size to 1048576, while for disk based datasets, the index key is PQ32\_128,IMI2x14,PQ32 and the training size 4194304. 
+To tune $\delta$-$\epsilon$-approximate search performance and accuracy, we vary $\delta$ and $\epsilon$ for SRS and $\epsilon$ for DSTree, iSAX2+ and VA+file (except in one experiment where we also vary $\delta$). 
+For $ng$-approximate search, we vary the $nprobe$ parameter for DSTree/iSAX2+/IMI/VA+file ($nprobe$ represents the number of visited leaves for DSTree/iSAX2+, the number of visited raw series for VA+file, and the number of inverted lists for IMI), and the \emph{efs} parameter for HNSW (which represents the number of non-pruned candidates). %during search).
+
+%We use a synthetic dataset of 100GB with data series of length 256.
+
+%The most critical parameter for these methods is the leaf threshold, i.e., the maximum number of data series that an index leaf can hold.
+%We thus vary the leaf size and study the tradeoffs of index construction and query answering for each method.
+%Figure~\ref{fig:exact:leafsize:time:idxproc} reports indexing and querying execution times for each method, normalized by the largest total cost.
+%The ratio is broken down into CPU and I/O times.
+%Figure~\ref{fig:exact:leafsize:time:idxproc:ADS+} shows that the performance of ADS+ is the same across leaf sizes.
+%The leaf size affects indexing time, but not query answering.
+%This is not visible in the figure, because index construction time is minimal compared to query answering time.  
+%This behavior is expected, since ADS+ is an adaptive index,
+%A distinctive feature of ADS+ is adaptive node splitting.
+%which during querying splits the nodes until a minimal leaf size is reached.
+% For all other methods, the leaf size affects both indexing and querying costs.
+%For M-tree, larger leaves cause both indexing and querying times to deteriorate.
+%For all other methods, increasing the leaf size improves indexing time (because trees are smaller) and querying time (because several series are read together), but once the leaf size goes beyond the optimal leaf size, querying slows down (because some series are unnecessarily read and processed).
+%For DSTree,
+% Although Figure \ref{fig:exact:leafsize:time:idxproc:dstree} implies that the combined indexing and querying cost is lower for the 150K leaf size,
+%the experiments execution logs indicate that querying is faster with the 100K leaf size.
+%The optimal leaf size for iSAX2+ is also 100K, for SFA is 1M, and for M-tree and R*-tree are 1 and 50, respectively.
+
+%SFA takes two other parameters: the alphabet size and the binning method. We ran experiments with both equi-depth and equi-width binning, and alphabet sizes from 8 (default value), to 256 (default alphabet size of iSAX2+ and ADS+).
+%Alphabet size 8 and equi-depth binning provided the best performance and were thus used for subsequent experiments.
+
+%SFA can also be parametrized by varying the alphabet size and the binning method (equi-width or equi-depth). We ran experiments using both binning methods and alphabet sizes from 8 (default value), to 256 (default alphabet size of iSAX2+ and ADS+).
+%Alphabet size 8 and equi-depth binning provided the best performance and were thus used for subsequent experiments.
+
+%Some of the evaluated methods also use internal buffers to manage raw data that do not fit in memory during index building and query processing.
+%We ran experiments varying these buffer sizes from 5GB to 60GB.
+%The maximum was set to 60GB (recall that total RAM was 75GB).
+%All methods benefit from a larger buffer size except ADS+.
+%This is because a smaller buffer size allows the OS to use extra memory for file caching during query processing, since ADS+ accesses the raw data file directly.
+
+
+\subsubsection{\textbf{\color{black}Indexing Efficiency}} %of Individual Methods}}
+\label{ssec:indexing_efficiency}
+In this section, we evaluate the indexing scalability of each method by varying the dataset size. We used four synthetic datasets of sizes 25GB, 50GB, 100GB and 250GB, two of which fit in memory (total RAM was 75GB).
+%The datasets for this experiment were generated using the same synthetic generator described in subsection \ref{subsec:framework}.
+
+\begin{comment}
+\begin{figure*}[tb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	%\begin{subfigure}{0.31\columnwidth}
+	%	\centering
+	%	\includegraphics[width=\columnwidth]{{exact_datasize_time_indexing_cache_ads+}}
+	%	\caption{ADS+}
+	%	\label{fig:exact:datasize:time:indexing:cache:ads+}
+	%\end{subfigure}
+	\begin{subfigure}{0.12\textwidth}
+		\centering
+		\includegraphics[width=\textwidth ]{exact_datasize_time_indexing_cache_dstree_legend}
+		\caption{DSTree}
+		\label{fig:exact:datasize:time:indexing:cache:dstree}
+	\end{subfigure}
+	\begin{subfigure}{0.12\textwidth }
+	\centering
+	\includegraphics[width=\textwidth ]{{exact_datasize_time_indexing_cache_flann}}
+	\caption{FLANN}
+	\label{fig:exact:datasize:time:indexing:cache:flann}
+	\end{subfigure}
+	%\hspace*{\fill} % separation between the subfigures
+	%\hspace*{\fill}
+	\begin{subfigure}{0.12\textwidth }
+		\centering
+		\includegraphics[width=\textwidth ]{{exact_datasize_time_indexing_cache_hnsw}}
+		\caption{HSNW}
+		\label{fig:exact:datasize:time:indexing:cache:hnsw}
+	\end{subfigure}
+	\begin{subfigure}{0.12\textwidth }
+		\centering
+		\includegraphics[width=\textwidth ]{{exact_datasize_time_indexing_cache_opq-imi}}
+		\caption{IMI}
+		\label{fig:exact:datasize:time:indexing:cache:imi}
+	\end{subfigure}
+	\begin{subfigure}{0.12\textwidth }
+		\centering
+		\includegraphics[width=\textwidth ]{exact_datasize_time_indexing_cache_isax2+}
+		\caption{iSAX2+}
+		\label{fig:exact:datasize:time:indexing:cache:iSAX2+}
+	\end{subfigure}
+	\begin{subfigure}{0.12\textwidth }
+	\centering
+	\includegraphics[width=\textwidth ]{{exact_datasize_time_indexing_cache_qalsh}}
+	\caption{QALSH}
+	\label{fig:exact:datasize:time:indexing:cache:qalsh}
+	\end{subfigure}	
+	\begin{subfigure}{0.12\textwidth }
+		\centering
+		\includegraphics[width=\textwidth ]{{exact_datasize_time_indexing_cache_lsh-srs}}
+		\caption{SRS}
+		\label{fig:exact:datasize:time:indexing:cache:srs}
+	\end{subfigure}
+	%\hspace*{\fill}
+	\begin{subfigure}{0.12\textwidth }
+		\centering
+		\includegraphics[width=\textwidth ]{{exact_datasize_time_indexing_cache_va+file}}
+		\caption{VA+file}
+		\label{fig:exact:datasize:time:indexing:cache:va+file}
+	\end{subfigure}
+	%\caption{Indexing scalability with increasing dataset sizes \\
+	%	{\color{black} photoshop OPQ and HNSW to indicate parallel}}
+	\caption{{\color{black} ({\bf MetaRev-2 and Rev2-W1})Indexing scalability}}	
+	\label{fig:exact:datasize:time:indexing:cache}
+\end{figure*}
+\end{comment}
+
+\begin{comment}
+\begin{figure}[tb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	%\begin{subfigure}{0.31\columnwidth}
+	%	\centering
+	%	\includegraphics[width=\columnwidth]{{exact_datasize_time_indexing_cache_ads+}}
+	%	\caption{ADS+}
+	%	\label{fig:exact:datasize:time:indexing:cache:ads+}
+	%\end{subfigure}
+	\begin{subfigure}{0.005\columnwidth }
+		\centering
+	%\hspace*{4cm}
+	%\vspace*{-1cm}
+	%		\includegraphics[width=\columnwidth ]{{exact_datasize_time_indexing_cache_vertical_legend.png}}
+		%\includegraphics[scale=0.3]{{exact_datasize_time_indexing_cache_vertical_legend_new.png}}
+	\end{subfigure}	\\	
+	\begin{subfigure}{0.31\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth ]{exact_datasize_time_indexing_cache_dstree_legend}
+		\caption{DSTree}
+		\label{fig:exact:datasize:time:indexing:cache:dstree}
+	\end{subfigure}
+	%\hspace*{\fill} % separation between the subfigures
+	%\hspace*{\fill}
+	\begin{subfigure}{0.31\columnwidth }
+		\centering
+		\includegraphics[width=\columnwidth ]{{exact_datasize_time_indexing_cache_hnsw}}
+		\caption{HSNW}
+		\label{fig:exact:datasize:time:indexing:cache:hnsw}
+	\end{subfigure}
+	\begin{subfigure}{0.31\columnwidth }
+	\centering
+	\includegraphics[width=\columnwidth ]{{exact_datasize_time_indexing_cache_opq-imi}}
+	\caption{IMI}
+	\label{fig:exact:datasize:time:indexing:cache:imi}
+	\end{subfigure}
+	\begin{subfigure}{0.31\columnwidth }
+	\centering
+	\includegraphics[width=\columnwidth ]{exact_datasize_time_indexing_cache_isax2+}
+	\caption{iSAX2+}
+	\label{fig:exact:datasize:time:indexing:cache:iSAX2+}
+	\end{subfigure}
+	\begin{subfigure}{0.31\columnwidth }
+		\centering
+		\includegraphics[width=\columnwidth ]{{exact_datasize_time_indexing_cache_lsh-srs}}
+		\caption{SRS}
+		\label{fig:exact:datasize:time:indexing:cache:srs}
+	\end{subfigure}
+	%\hspace*{\fill}
+	\begin{subfigure}{0.31\columnwidth }
+		\centering
+		\includegraphics[width=\columnwidth ]{{exact_datasize_time_indexing_cache_va+file}}
+		\caption{VA+file}
+		\label{fig:exact:datasize:time:indexing:cache:va+file}
+	\end{subfigure}
+	\begin{subfigure}{0.31\columnwidth }
+		\centering
+		\includegraphics[width=\columnwidth ]{{exact_datasize_time_indexing_cache_qalsh}}
+		\caption{QALSH}
+		\label{fig:exact:datasize:time:indexing:cache:qalsh}
+	\end{subfigure}
+	\begin{subfigure}{0.31\columnwidth }
+		\centering
+		\includegraphics[width=\columnwidth ]{{exact_datasize_time_indexing_cache_flann}}
+		\caption{FLANN}
+		\label{fig:exact:datasize:time:indexing:cache:flann}
+	\end{subfigure}
+	%\caption{Indexing scalability with increasing dataset sizes \\
+	%	{\color{black} photoshop OPQ and HNSW to indicate parallel}}
+	\caption{{\color{black} ({\bf MetaRev-2 and Rev2-W1})Indexing scalability}}	
+	\label{fig:exact:datasize:time:indexing:cache}
+\end{figure}
+\end{comment}
+%\noindent\textbf{ADS+.} Figure~\ref{fig:exact:datasize:time:indexing:cache:ads+} shows that index building with ADS+ is extremely fast taking less than 10 minutes for the 250GB dataset. This is because ADS+ is an adaptive index that builds the index tree using only summarizations thus reducing I/O cost significantly.
+
+\begin{comment}
+{\color{black}\noindent\textbf{FLANN.} FLANN builds the index for the 25GB dataset quickly but does not scale for the 50GB dataset (Figure~\ref{fig:exact:datasize:time:indexing:cache:flann}). We think the reason is there is a memory management issue with the code since it swaps heavily although the index size on disk is only 8GB and the data is 25GB (FLANN loads the full dataset in-memory).}
+
+\noindent\textbf{DSTree.} DSTree's index building algorithm is more expensive, requiring about 4 hours for the largest dataset (Figure~\ref{fig:exact:datasize:time:indexing:cache:dstree}). Nevertheless, the cost is dominated by CPU time. Thus, parallelization can be used to improve this method.
+
+\noindent\textbf{HNSW.} HNSW is an in-memory method that requires both the dataset and the graph structure to fit in memory. Therefore, given that the total RAM was 75GB, we were able to build the HNSW index only for the 25GB dataset. Despite the use of multi-threading, index building is extremely slow, taking over 10 hours for the smallest dataset (Figure~\ref{fig:exact:datasize:time:indexing:cache:hnsw}).
+
+\noindent\textbf{IMI.} Although our Faiss IMI implementation exploits multi-threading %, popcount, 
+and SIMD vectorization %and the OpenBLAS libary, 
+training and building the IMI index was very slow, requiring over 15 hours on the 250GB dataset (Figure~\ref{fig:exact:datasize:time:indexing:cache:imi}).
+%We used the recommended max\_code for each dataset size and varied nprobe to adjust the speed-accuracy tradeoff.
+
+\noindent\textbf{iSAX2+.} In Figure~\ref{fig:exact:datasize:time:indexing:cache:iSAX2+}, we can see that iSAX2+ is efficient at index building, requiring less than an hour for the largest dataset. The cost of index building is mostly I/O.
+
+%The HD-index only has numbers for 1M SIFT for OPQ and HNSW, they said they could not construct the index due to a crash.
+
+%time consuming to parameterize because index construction is slow and the index has to be constructed for different parameters: M and efConstruction.
+
+{\color{black}\noindent\textbf{QALSH.} In Figure~\ref{fig:exact:datasize:time:indexing:cache:qualsh}, we can see that the indexing time for QALSH doubles between 25GB and 50GB and is mainly I/O cost.} 
+
+\noindent\textbf{SRS.} 
+%We used M=16 to fit the index in memory and varied delta and epsilon to adjust speed-accuracy
+The results for SRS are depicted in Figure~\ref{fig:exact:datasize:time:indexing:cache:srs}. 
+We used the most efficient implementation provided by the authors and the largest value of M that ensured best accuracy and minimum index size.
+Even tough index building in memory is efficient, swapping issues occur for the larger datasets. 
+
+\noindent\textbf{VA+file.} Figure~\ref{fig:exact:datasize:time:indexing:cache:va+file} shows that VA+file performs well at index building, with most of the total cost being CPU (optimal bit allocation and interval decision for each dimension.) This method also offers good opportunities for parallelization.
+
+%In PAC queries paper Patella claims that Unfortunately, AC-NN algorithms are still plagued by the dimensionality curse and become unpractical when D is
+%intrinsically high, regardless of epsilon. We show that this is not always the case. The results obtained with epsilon are competitive with the SOTA in vecor indexing and we further use delta to improve the numbers.
+
+
+%\noindent\textbf{Summary.}
+%Overall, Figure~\ref{fig:exact:datasize:time:indexing:cache} shows that it takes Stepwise, MASS, the M-tree and the R*-tree over 12 hours to complete the workload for the 250GB dataset, whereas the other methods need less than 7 hours.
+% Moreover, although the performance of Stepwise improves with longer series (see Figure \ref{fig:exact:length:time:idxproc:Stepwise}), it still is not competitive.
+% We conclude that Stepwise, MASS, the M-tree and the R*-tree do not scale well with larger datasets on whole matching queries;
+%Therefore, in the subsequent experiments, we will only include ADS+, DSTree, iSAX2+, SFA, the UCR suite and the VA+file. %We will choose the UCR suite as the baseline, since it is the best sequential method available.
+
+{\color{black}\noindent\textbf{Discussion.}}
+Figure~\ref{fig:exact:datasize:time:indexing:cache} shows that iSAX2+ is the fastest method at index building in and out of memory, followed by VA+file, SRS, DSTree, {\color{black}FLANN}, QALSH, IMI and HNSW. 
+Even though IMI and HNSW are the only parallel methods, they are the slowest at index building. {\color{black}Although FLANN is slow at indexing the 50GB dataset, we think this is more due to memory management issues in the code which causes swapping.}
+For HNSW, the major cost is building the graph structure, whereas IMI spends most of the time on determining the clusters and computing the product quantizers. 
+In terms of footprint, the DSTree is the most memory-efficient, followed by iSAX2+. 
+IMI, SRS, VA+file {\color{black}and FLANN} are two orders of magnitude larger, while {\color{black}QALSH} and HNSW are a further order of magnitude bigger (Figure~\ref{fig:exact:datasize:memory:indexing:cache}). 
+\end{comment}
+{\color{black}
+Figure~\ref{fig:exact:datasize:time:indexing:cache} shows that iSAX2+ is the fastest method at index building in and out of memory, followed by VA+file, SRS, DSTree, {\color{black}FLANN}, QALSH, IMI and HNSW. 
+Even though IMI and HNSW are the only parallel methods, they are the slowest at index building. {\color{black}Although FLANN is slow at indexing the 50GB dataset, we think this is more due to memory management issues in the code, which cause swapping.}
+For HNSW, the major cost is building the graph structure, whereas IMI spends most of the time on determining the clusters and computing the product quantizers. We also measured the breakdown of the indexing time and found out that all methods can be significantly improved by parallelism except iSAX2+ and QALSH that are I/O bound.
+In terms of footprint, the DSTree is the most memory-efficient, followed by iSAX2+. 
+IMI, SRS, VA+file {\color{black}and FLANN} are two orders of magnitude larger, while {\color{black}QALSH} and HNSW are a further order of magnitude bigger (Figure~\ref{fig:exact:datasize:memory:indexing:cache}).}
+
+\begin{figure}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\columnwidth }
+		\centering
+		%\hspace*{4cm}
+		%\vspace*{-1cm}
+		%		\includegraphics[width=\columnwidth ]{{exact_datasize_time_indexing_cache_vertical_legend.png}}
+		\includegraphics[scale=0.14]{{full_epsilon_legend_25GB}}
+	\end{subfigure}		
+	\begin{subfigure}{0.49\columnwidth }
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[width=\columnwidth ]{{exact_datasize_time_combined}}
+		%\includegraphics[scale=0.30]{{exact_datasize_time_combined}}	
+		\caption{Indexing time}
+		\label{fig:exact:datasize:time:indexing:cache}
+	\end{subfigure}
+	\begin{subfigure}{0.49\columnwidth }
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[width=\columnwidth ]{{exact_datasize_memory_combined}}
+		%\includegraphics[scale=0.30]{{exact_datasize_memory_combined}}		
+		\caption{Size in memory}
+		\label{fig:exact:datasize:memory:indexing:cache}
+	\end{subfigure}
+	%\caption{Comparison of indexing scalability with increasing dataset sizes \\
+	%	{\color{black} photoshop OPQ and HNSW to indicate parallel}}
+	\caption{{\color{black} Comparison of indexing scalability}}	
+	\label{fig:exact:datasize:time:memory:indexing:combined:cache}
+\end{figure}
+
+\begin{comment}
+\begin{figure*}[tb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_throughput_synthetic_25GB_256_ng_1NN_100_nocache}}
+		\caption{1-NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:ng:1NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_256_de_1NN_100_nocache}
+		\caption{1-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:de:1NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_256_ng_10NN_100_nocache}
+		\caption{10-NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:ng:10NN:100:nocache}
+	\end{subfigure}
+	%\hspace*{\fill}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_throughput_synthetic_25GB_256_de_10NN_100_nocache}}
+		\caption{10-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:de:10NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_256_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_256_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_25GB_256_ng_1NN_100_nocache}}
+		\caption{1-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:1NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_de_1NN_100_nocache}
+		\caption{1-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:1NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_ng_10NN_100_nocache}
+		\caption{10-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:10NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_25GB_256_de_10NN_100_nocache}}
+		\caption{10-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:10NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_25GB_256_ng_100NN_100_nocache}}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_25GB_256_ng_1NN_10000_nocache}}
+		\caption{1-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:1NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_de_1NN_10000_nocache}
+		\caption{1-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:1NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_ng_10NN_10000_nocache}
+		\caption{10-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:10NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_25GB_256_de_10NN_10000_nocache}}
+		\caption{10-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:10NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_ng_100NN_10000_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_de_100NN_10000_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:100NN:10K:nocache}
+	\end{subfigure}
+	\caption{Efficiency vs. accuracy\\
+		(Dataset = Rand25GB, Data series length=256)}	
+	\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd}
+\end{figure*}
+\end{comment}
+
+\begin{comment}
+\begin{figure*}[tb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_256_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_256_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_25GB_256_ng_100NN_100_nocache}}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_ng_100NN_10000_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_de_100NN_10000_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:100NN:10K:nocache}
+	\end{subfigure}
+	\caption{Efficiency vs. accuracy\\
+		(Dataset = Rand25GB, Data series length=256)}	
+	\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd}
+\end{figure*}
+\end{comment}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsubsection{\textbf{Query Answering Efficiency and Accuracy: in-Memory Datasets}}
+\label{ssec:query_efficiency_mem}
+
+{\color{black}
+	We now compare query answering efficiency and accuracy, in addition to the indexing time, thus, measuring how well each method amortizes index construction time over a large number of queries, and the level of accuracy achieved.
+}
+%according to different criteria: scalability and search efficiency on more complex workloads and on different hardware platforms, number of random and sequential disk accesses, memory and disk footprint, pruning ratio, tightness of the lower bound and accuracy of the approximate search.
+
+\noindent\textbf{Summary.} 
+For our in-memory experiments, we used four datasets of 25GB each: two synthetic (with series of length 256 and 16384, respectively), and two real: Deep25GB and Sift25GB. 
+We ran 1NN, 10NN and {\color{black} 100NN} queries on the four datasets and we observed that, while the running times increase with k, the relative performance of the methods stays the same. 
+Due to lack of space, Figure~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:inmemory:hdd} shows the 100NN query results only (full results are in~\cite{url/DSSeval2}), which we discuss below. 
+{\color{black} Note that  HNSW, QALSH and FLANN store all raw data in-memory, % (this is by design for HNSW and a limitation of the implementation for FLANN and QALSH), 
+while all other approaches use the memory to store their data structures, but read the raw data from disk; IMI does not access the raw data at all (it only uses the in-memory summaries).}
+%\sout{, but can only answer ng-approximate queries}).}
+
+\noindent\textbf{Short Series}. 
+For $ng$-approximate queries of length $256$ on the Rand25GB dataset, HNSW has the largest throughput for any given accuracy, followed by {\color{black}FLANN}, IMI, DSTree and iSAX2+ (Figure~\ref{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache}). 
+However, HNSW does not reach a MAP of 1, which is only obtained by the data series indexes (DSTree, iSAX2+, VA+file). The skip-sequential method VA+file performs poorly on approximate search since it prunes per series and not per cluster like the tree-based methods do. 
+When indexing time is also considered, iSAX2+ wins for the workload consisting of 100 queries (Figure~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache}), and DSTree for the 10K queries (Figure~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:10K:nocache}). 
+
+Regarding $\delta$-$\epsilon$-approximate search, DSTree offers the best throughput/accuracy tradeoff, followed by iSAX2+, SRS, {\color{black}VA+file and finally QALSH}. 
+SRS does not achieve a MAP higher than 0.5, while DSTree and iSAX2+ are at least 3 times faster than SRS for a similar accuracy (Figure~\ref{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:de:100NN:100:nocache}). 
+When we consider the combined indexing and querying times, iSAX2+ wins over all methods for 100 queries (Figure~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:100NN:100:nocache}), and DSTree wins for 10K queries (Figure~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:100NN:10K:nocache}). 
+
+
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.18]{{full_epsilon_legend_25GB}}\\
+	\end{subfigure}	
+	\begin{comment}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_10GB_128_ng_100NN_100_nocache}
+		\scriptsize \caption{Sift10GB (ng)} 
+		\label{fig:approx:accuracy:qefficiency:sift:10GB:128:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_10GB_128_de_100NN_100_nocache}
+		\scriptsize \caption{Sift10GB ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:sift:10GB:128:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_sift_10GB_128_ng_100NN_100_nocache}}
+		\scriptsize \caption{Sift10GB (ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:10GB:128:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_10GB_128_de_100NN_100_nocache}
+		\scriptsize \caption{Sift10GB ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:10GB:128:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_10GB_128_ng_100NN_10000_nocache}
+		\scriptsize \caption{Sift10GB (ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:10GB:128:hdd:ng:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_10GB_256_de_100NN_10000_nocache}
+		\scriptsize \caption{Sift10GB ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:10GB:128:hdd:de:100NN:10K:nocache}
+	\end{subfigure}
+	\end{comment}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_256_ng_100NN_100_nocache}
+		\scriptsize \caption{Rand25GB\\256 (ng)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_256_de_100NN_100_nocache}
+		\scriptsize \caption{Rand25GB\\256 ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_25GB_256_ng_100NN_100_nocache}}
+		\scriptsize \caption{Rand25GB\\256 (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_de_100NN_100_nocache}
+		\scriptsize \caption{Rand25GB\\256 ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_ng_100NN_10000_nocache}
+		\scriptsize \caption{Rand25GB\\256 (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_256_de_100NN_10000_nocache}
+		\scriptsize \caption{Rand25GB\\256 ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:de:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_16384_ng_100NN_100_nocache}
+		\scriptsize \caption{Rand25GB\\16384 (ng)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:16384:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_16384_de_100NN_100_nocache}
+		\scriptsize \caption{Rand25GB\\16384 ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:16384:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_16384_ng_100NN_100_nocache}
+		\scriptsize \caption{Rand25GB\\16384 (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:16384:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_16384_de_100NN_100_nocache}
+		\scriptsize \caption{Rand25GB\\16384 ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:16384:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_16384_ng_100NN_10000_nocache}
+		\scriptsize \caption{Rand25GB\\16384 (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:16384:ng:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_16384_de_100NN_10000_nocache}
+		\scriptsize \caption{Rand25GB\\16384($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:16384:de:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_25GB_128_ng_100NN_100_nocache}
+		\scriptsize \caption{Sift25GB(ng)} 
+		\label{fig:approx:accuracy:qefficiency:sift:25GB:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_25GB_128_de_100NN_100_nocache}
+		\scriptsize \caption{Sift25GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:sift:25GB:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_25GB_128_ng_100NN_100_nocache}
+		\scriptsize \caption{Sift25GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:25GB:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_25GB_128_de_100NN_100_nocache}
+		\scriptsize \caption{Sift25GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:25GB:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_25GB_128_ng_100NN_10000_nocache}
+		\scriptsize \caption{Sift25GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:25GB:ng:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_25GB_128_de_100NN_10000_nocache}
+		\scriptsize \caption{Sift25GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:25GB:de:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_deep_25GB_96_ng_100NN_100_nocache}
+		\scriptsize \caption{Deep25GB(ng)} 
+		\label{fig:approx:accuracy:qefficiency:deep:25GB:96:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_deep_25GB_96_de_100NN_100_nocache}
+		\scriptsize \caption{Deep25GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:deep:25GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_deep_25GB_96_ng_100NN_100_nocache}}
+		\scriptsize \caption{Deep25GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_25GB_96_de_100NN_100_nocache}
+		\scriptsize \caption{Deep25GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.165\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_25GB_96_ng_100NN_10000_nocache}
+		\scriptsize\caption{Deep25GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:ng:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_25GB_96_de_100NN_10000_nocache}
+		\scriptsize \caption{Deep25GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:de:100NN:10K:nocache}
+	\end{subfigure}	
+	\vspace*{-0.2cm}
+	\caption{{\color{black} Efficiency vs. accuracy in memory (100NN queries)}}	
+	\vspace*{-0.2cm}
+	\label{fig:approx:accuracy:efficiency:synthetic:25GB:inmemory:hdd}
+\end{figure*}
+
+\begin{comment}
+\begin{figure*}[tb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_16384_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:16384:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_25GB_16384_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:25GB:16384:de:hdd:100NN:100:cache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_16384_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:16384:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_16384_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:16384:de:hdd:100NN:100:cache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_16384_ng_100NN_10000_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:16384:ng:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_synthetic_25GB_16384_de_100NN_10000_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:25GB:16384:de:hdd:100NN:10K:cache}
+	\end{subfigure}
+	\caption{Efficiency vs. accuracy\\
+		(Dataset = Rand25GB, Data series length=16384)}	
+	\label{fig:approx:accuracy:efficiency:synthetic:25GB:16384:hdd}
+\end{figure*}
+\end{comment}
+%lowest accuracy possible for iSAX2+, trying fewer leaves does not return 100NN
+
+%{\color{cyan}\noindent\textbf{Search Efficiency for Longer Series.}} 
+\noindent\textbf{Long Series}. 
+In this experiment, we use dataset sizes of 25GB, and query length of 16384.
+% (the number of dimensions in the summarizations remains at 16). 
+For $ng$-approximate search, we report the results only for iSAX2+, DSTree and VA+file. We ran several experiments with IMI and HNSW building the indexes using different parameters, but obtained a MAP of 0 for IMI for all index configurations we tried, and ran into a segmentation fault during query answering with HNSW. 
+DSTree outperforms both iSAX2+ and VA+file in terms of throughput and combined total cost for the larger workload (Figures~\ref{fig:approx:accuracy:qefficiency:synthetic:25GB:16384:ng:hdd:100NN:100:nocache} and~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:16384:ng:hdd:100NN:10K:nocache}), whereas iSAX2+ wins for the smaller workload when the combined total cost is considered (Figure~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:16384:ng:hdd:100NN:100:nocache}). {\color{black}We note also that the performance of FLANN deteriorates with the increased dimensionality.}
+
+For $\delta$-$\epsilon$-approximate queries, Figure~\ref{fig:approx:accuracy:qefficiency:synthetic:25GB:16384:de:hdd:100NN:100:nocache} shows that DSTree and VA+file outperform all other methods for large MAP values, while DSTree and iSAX2+ have higher throughput for small MAP values. 
+Note that the SRS accuracy decreases when compared to series of length 256, with the best MAP value now being 0.25. 
+This is due to the increased information loss, as for both series lengths the number of dimensions in the projected space is 16. 
+When index building time is considered, VA+file wins for the small workload (Figure~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:16384:de:hdd:100NN:100:nocache}), and iSAX2+ and DSTree win for the large one (Figure~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:16384:de:hdd:100NN:10K:nocache}). {\color{black}We do not report numbers for QALSH because the algorithm ran into a segmentation fault for series of length 16384.}
+
+\noindent\textbf{Real Data}. 
+We ran the same set of experiments with real datasets. 
+For $ng$-approximate queries, HNSW outperforms the query performance of other methods by a large margin (Figures~\ref{fig:approx:accuracy:qefficiency:sift:25GB:ng:hdd:100NN:100:nocache} and~\ref{fig:approx:accuracy:qefficiency:deep:25GB:96:hdd:ng:100NN:100:nocache}). When indexing time is considered, HNSW loses its edge due to its high indexing cost to iSAX2+ when the query workload consists of 100 queries (Figures~\ref{fig:approx:accuracy:efficiency:sift:25GB:ng:hdd:100NN:100:nocache} and~\ref{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:ng:100NN:100:nocache}) and to DSTree for the 10K workload (Figures~\ref{fig:approx:accuracy:efficiency:sift:25GB:ng:hdd:100NN:10K:nocache} and ~\ref{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:ng:100NN:10K:nocache}). 
+HNSW does not achieve a MAP of 1, while DSTree and ISAX2+ both do,  yet at a high cost. 
+
+DSTree clearly wins on Sift25GB and Deep25GB among $\delta$-$\epsilon$-approximate methods (Figures~\ref{fig:approx:accuracy:qefficiency:sift:25GB:de:hdd:100NN:100:nocache}, ~\ref{fig:approx:accuracy:qefficiency:deep:25GB:96:hdd:de:100NN:100:nocache}, ~\ref{fig:approx:accuracy:efficiency:sift:25GB:de:hdd:100NN:10K:nocache}, and ~\ref{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:de:100NN:10K:nocache}), except for the scenario of indexing plus answering 100 queries, where iSAX2+ has the least combined cost (Figures~\ref{fig:approx:accuracy:efficiency:sift:25GB:de:hdd:100NN:100:nocache} and~\ref{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:de:100NN:100:nocache}). 
+This is because DSTree's query answering is very fast, but its indexing cost is high, so it is amortized only with a large query workload (Figures~\ref{fig:approx:accuracy:efficiency:sift:25GB:de:hdd:100NN:10K:nocache} and~\ref{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:de:100NN:10K:nocache}). 
+We observe a similar trend for both Sift25GB and Deep25GB, except the degradation of the performance of SRS, which achieves a very low accuracy of 0.01 on Deep25GB, despite using the most restrictive parameters ($\delta$ = 0.99 and $\epsilon$ = 0). 
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_25GB_128_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:sift:25GB:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_25GB_128_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:sift:25GB:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_25GB_128_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:25GB:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_25GB_128_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:25GB:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_25GB_128_ng_100NN_10000_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:25GB:ng:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_25GB_128_de_100NN_10000_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:25GB:de:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\caption{Efficiency vs. accuracy\\
+		(Dataset = Sift25GB, Data series length=128)}	
+	\label{fig:approx:accuracy:efficiency:sift:25GB:hdd}
+\end{figure*}
+\end{comment}
+%In fact, IMI also 
+%drops from 0.5 for Rand25GB to 0.3 and 0.22 for Sift25GB and Deep25GB respectively. 
+%achieves its lowest accuracy on the Deep25GB dataset. This is probably due to the fact that the Deep vectors exhibit high interdependence between features, while the two halves of the Sift vectors are independent~\cite{conf/eccv/baranchuk2018}. 
+%Note that IMI achieves a better accuracy for Rand25GB than for the real datasets. In fact, the MAP value drops from 0.5 to 0.3 and 0.22 for Sift25GB and Deep25GB respectively.  
+
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_deep_25GB_96_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:deep:25GB:96:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_deep_25GB_96_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:deep:25GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_deep_25GB_96_ng_100NN_100_nocache}}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_25GB_96_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_25GB_96_ng_100NN_10000_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:ng:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_25GB_96_de_100NN_10000_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:de:100NN:10K:nocache}
+	\end{subfigure}
+	\caption{Efficiency vs. accuracy\\
+		(Dataset = Deep25GB, Data series length=96)}	
+	\label{fig:approx:accuracy:efficiency:deep:25GB:96:hdd}
+\end{figure*}
+%DSTree's accuracy cannot go lower since nprobe = 1 
+\end{comment}
+
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_throughput_synthetic_250GB_256_ng_100NN_100_nocache}}
+		\caption{100NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:250GB:256:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_throughput_synthetic_250GB_256_de_100NN_100_nocache}}
+		\caption{100NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:250GB:256:de:hdd:10NN:100:nocache}
+	\end{subfigure}
+	%\hspace*{\fill}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_250GB_256_ng_100NN_100_nocache}}
+		\caption{100NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:250GB:256:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_250GB_256_de_100NN_100_nocache}}
+		\caption{100NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:250GB:256:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_250GB_256_ng_100NN_10000_nocache}}
+		\caption{100NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:250GB:256:ng:hdd:10NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_250GB_256_de_100NN_10000_nocache}}
+		\caption{100NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:250GB:256:de:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\caption{Efficiency vs. accuracy\\
+		(Dataset = Rand250GB, Data series length=256)}	
+	\label{fig:approx:accuracy:efficiency:synthetic:250GB:256:hdd}
+\end{figure*}
+\end{comment}
+
+
+
+
+\noindent\textbf{Comparison of Accuracy Measures.} In the approximate similarity search literature, the most commonly used accuracy measures are approximation error and recall. The approximation error evaluates how far the approximate neighbors are from the true neighbors, whereas recall assesses how many true neighbors are returned. 
+In our study, we refer to the recall and approximation error of a workload as Avg\_Recall and MRE respectively. 
+In addition, we use a third measure called MAP because it takes into account the order of the returned candidates and thus is more sensitive than recall. Figures~\ref{fig:approx:map:recall:sift:25GB:128:ng:hdd} and~\ref{fig:approx:map:mre:sift:25GB:128:ng:hdd} compare all three measures for the popular real dataset Sift25GB (we use the 25GB subset to include in-memory methods as well). 
+We observe that for any given workload, the Avg\_Recall is equal to MAP for all methods, except for IMI. 
+This is because IMI returns the short-listed candidates based on distance calculations on the compressed vectors, while the other methods further refine the candidates by sorting them based on the Euclidean distance of the query to the raw data. %original multidimensional vectors. 
+Figure~\ref{fig:approx:map:mre:sift:25GB:128:ng:hdd} illustrates the relationship between MAP and MRE. 
+Note that the value of the approximation error is not always indicative of the actual accuracy. 
+For instance, an MRE of about 0.5 for iSAX2 sounds acceptable (some popular LSH methods only work with $\epsilon>=3$~\cite{journal/tods/tao2010,conf/sigmod/gan2012}), yet it corresponds to a very low accuracy of 0.03 as measured by MAP (Figures~\ref{fig:approx:map:mre:sift:25GB:128:ng:hdd}). 
+Note that MAP can be more useful in practice, since it takes into account the actual ranks of the true neighbors returned, whereas MRE is evaluated only on the distances between the query and its neighbors.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsubsection{\textbf{Query Answering Efficiency and Accuracy: on-Disk Datasets}}
+\label{ssec:query_efficiency_disk}
+
+{\color{black}We now report results (Figure~\ref{fig:approx:accuracy:efficiency:synthetic:250GB:ondisk:hdd}) for on-disk experiments, excluding the in-memory only HNSW, {QALSH and FLANN}}. %Figure~\ref{fig:approx:accuracy:efficiency:synthetic:250GB:ondisk:hdd} summarizes all experiments. % with disk-based synthetic and real datasets. 
+
+\noindent\textbf{Synthetic Data}. DSTree and iSAX2+ outperform by far the rest of the techniques on both $ng$-approximate and $\delta$-$\epsilon$-approximate queries. iSAX2+ is particularly competitive when the total cost is considered with the smaller workload (Figures~\ref{fig:approx:accuracy:efficiency:synthetic:250GB:256:ng:hdd:100NN:100:nocache} and~\ref{fig:approx:accuracy:efficiency:synthetic:250GB:256:de:hdd:100NN:100:nocache}). The querying performance of SRS degraded on-disk due to severe swapping issues (Figure~\ref{fig:approx:accuracy:qefficiency:synthetic:250GB:256:de:hdd:10NN:100:nocache}), therefore we do not include this method in further disk-based experiments. Although IMI is much faster than both iSAX2+ and DSTree on $ng$-approximate search, its accuracy is extremely low. In fact, the best MAP accuracy achieved by IMI plummets to 0.05, whereas DSTree and iSAX2+ have much higher MAP values (Figure~\ref{fig:approx:accuracy:qefficiency:synthetic:250GB:256:ng:hdd:100NN:100:nocache}).
+
+
+\noindent\textbf{Real Data}. DSTree outperforms all methods %for all types of approximate search 
+on both Sift250GB and Deep250GB. The only exception is iSAX2+ having an edge when the combined indexing and search costs are considered for the smaller workload (Figures~\ref{fig:approx:accuracy:efficiency:sift:250GB:ng:hdd:100NN:100:nocache},~\ref{fig:approx:accuracy:efficiency:sift:250GB:de:hdd:100NN:100:nocache},~\ref{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:ng:100NN:100:nocache} and~\ref{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:de:100NN:100:nocache}) and being equally competitive on $ng$-approximate query answering (Figures~\ref{fig:approx:accuracy:qefficiency:sift:250GB:ng:hdd:100NN:100:nocache},~\ref{fig:approx:accuracy:qefficiency:sift:250GB:de:hdd:100NN:100:nocache}).
+%On the Deep250GB dataset, We can observe a trend similar to the Rand250GB dataset: DSTree achieves the best throughput for ng-approximate and $\delta$-$\epsilon$-approximate search. However when index building time is considered, iSAX2+ becomes the distinct winner on the small workload, and iSAX2+/DSTree having a similar performance on the larger workload.
+
+\begin{figure*}[tb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.18]{{full_epsilon_legend_250GB}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_throughput_synthetic_250GB_256_ng_100NN_100_nocache}}
+		\scriptsize \caption{Rand250GB(ng)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:250GB:256:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_throughput_synthetic_250GB_256_de_100NN_100_nocache}}
+		\scriptsize \caption{Rand250GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:synthetic:250GB:256:de:hdd:10NN:100:nocache}
+	\end{subfigure}
+	%\hspace*{\fill}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_250GB_256_ng_100NN_100_nocache}}
+		\scriptsize \caption{Rand250GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:250GB:256:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_250GB_256_de_100NN_100_nocache}}
+		\scriptsize \caption{Rand250GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:250GB:256:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_250GB_256_ng_100NN_10000_nocache}}
+		\scriptsize \caption{Rand250GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:250GB:256:ng:hdd:10NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_synthetic_250GB_256_de_100NN_10000_nocache}}
+		\scriptsize \caption{Rand250GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:synthetic:250GB:256:de:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_250GB_128_ng_100NN_100_nocache}
+		\scriptsize \caption{Sift250GB(ng)} 
+		\label{fig:approx:accuracy:qefficiency:sift:250GB:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_250GB_128_de_100NN_100_nocache}
+		\scriptsize \caption{Sift250GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:sift:250GB:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_250GB_128_ng_100NN_100_nocache}
+		\scriptsize \caption{Sift250GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:250GB:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_250GB_128_de_100NN_100_nocache}
+		\scriptsize \caption{Sift250GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:250GB:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_250GB_128_ng_100NN_10000_nocache}
+		\scriptsize \caption{Sift250GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:250GB:ng:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_250GB_128_de_100NN_10000_nocache}
+		\scriptsize \caption{Sift250GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:250GB:de:hdd:100NN:10K:nocache}
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_deep_250GB_96_ng_100NN_100_nocache}
+		\scriptsize \caption{Deep250GB(ng)} 
+		\label{fig:approx:accuracy:qefficiency:deep:250GB:96:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_deep_250GB_96_de_100NN_100_nocache}
+		\scriptsize \caption{Deep250GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:deep:250GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_deep_250GB_96_ng_100NN_100_nocache}}
+		\scriptsize \caption{Deep250GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_250GB_96_de_100NN_100_nocache}
+		\scriptsize \caption{Deep250GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_250GB_96_ng_100NN_10000_nocache}
+		\scriptsize \caption{Deep250GB(ng)} 
+		\label{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:ng:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_250GB_96_de_100NN_10000_nocache}
+		\scriptsize \caption{Deep250GB($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:de:100NN:10K:nocache}
+	\end{subfigure}
+	\caption{{\color{black} Efficiency vs. accuracy on disk (100NN queries)}}	
+	\vspace*{-0.2cm}
+	\label{fig:approx:accuracy:efficiency:synthetic:250GB:ondisk:hdd}
+\end{figure*}
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_250GB_128_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:sift:250GB:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_250GB_128_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:sift:250GB:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_250GB_128_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:250GB:ng:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_250GB_128_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:250GB:de:hdd:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_250GB_128_ng_100NN_10000_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:sift:250GB:ng:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_sift_250GB_128_de_100NN_10000_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:sift:250GB:de:hdd:100NN:10K:nocache}
+	\end{subfigure}
+	\caption{Efficiency vs. accuracy\\
+		(Dataset = Sift250GB, Data series length=128)}	
+	\label{fig:approx:accuracy:efficiency:sift:250GB:hdd}
+\end{figure*}
+\end{comment}
+
+%Figure~\ref{fig:approx:accuracy:efficiency:deep:250GB:96:hdd} summarizes 
+
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_deep_250GB_96_ng_100NN_100_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:qefficiency:deep:250GB:96:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_deep_250GB_96_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:qefficiency:deep:250GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_idxproc_deep_250GB_96_ng_100NN_100_nocache}}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_250GB_96_de_100NN_100_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_250GB_96_ng_100NN_10000_nocache}
+		\caption{100-NN (ng)} 
+		\label{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:ng:100NN:10K:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_idxproc_deep_250GB_96_de_100NN_10000_nocache}
+		\caption{100-NN ($\bm{\delta\epsilon}$)} 
+		\label{fig:approx:accuracy:efficiency:deep:250GB:96:hdd:de:100NN:10K:nocache}
+	\end{subfigure}
+	\caption{Efficiency vs. accuracy\\
+		(Dataset = Deep250GB, Data series length=96)}	
+	\label{fig:approx:accuracy:efficiency:deep:250GB:96:hdd}
+\end{figure*}
+\end{comment}
+
+
+ 	
+
+{\color{black} \noindent\textbf{Best Performing Methods.}} The earlier results show that VA+file is 
+%consistently 
+outperformed by DSTree and iSAX2+, and that SRS and IMI have very low accuracy on the large datasets. 
+We thus conduct further experiments considering only iSAX2+ and DSTree (recall that HNSW is an in-memory approach only): %: we use two additional real datasets, more comparison criteria like the amount of data accessed and the number of random I/Os, and study in more detail the effect of k, $\delta$ and $\epsilon$. 
+%All these results are summarized in 
+%and report the results in 
+see Figures~\ref{fig:approx:accuracy:data:250GB:hdd:best},~\ref{fig:approx:efficiency:k:hdd} and~\ref{fig:approx:accuracy_efficiency:delta:epsilon:synthetic:250GB:hdd}.%We also examine the actual useful execution time.
+In terms of query efficiency/accuracy tradeoff, DSTree outperforms iSAX2+ on all datasets, except for Sald100GB (Figure~\ref{fig:approx:accuracy:throughput:sald:100GB:128:hdd:ng:100NN:100:nocache:best}), and for low MAP values on Seismic100GB (Figure~\ref{fig:approx:accuracy:throughput:seismic:100GB:256:hdd:ng:100NN:100:nocache:best}). 
+
+\begin{comment}
+ \begin{figure*}[!htb]
+ 	\captionsetup{justification=centering}
+ 	\captionsetup[subfigure]{justification=centering}
+ 	\begin{subfigure}{\textwidth}
+ 		\centering
+ 		%\hspace*{1cm}
+ 		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+ 	\end{subfigure}	
+ 	\begin{subfigure}{0.24\textwidth}
+ 		\centering
+ 		\includegraphics[width=\textwidth]{exact_mapk_throughput_sald_100GB_128_ng_100NN_100_nocache}
+ 		\caption{Sald100GB\\100-NN (ng)} 
+ 		\label{fig:approx:accuracy:qefficiency:sald:100GB:ng:hdd:100NN:100:nocache}
+ 	\end{subfigure}
+ 	\begin{subfigure}{0.24\textwidth}
+ 		\centering
+ 		\includegraphics[width=\textwidth]{exact_mapk_throughput_sald_100GB_128_de_100NN_100_nocache}
+ 		\caption{Sald100GB\\100-NN ($\bm{\epsilon}$)} 
+ 		\label{fig:approx:accuracy:qefficiency:sald:100GB:de:hdd:100NN:100:nocache}
+ 	\end{subfigure}
+ 	\begin{subfigure}{0.24\textwidth}
+ 		\centering
+ 		\includegraphics[width=\textwidth]{exact_mapk_throughput_seismic_100GB_256_ng_100NN_100_nocache}
+ 		\caption{Seismic100GB\\100-NN (ng)} 
+ 		\label{fig:approx:accuracy:qefficiency:seismic:100GB:ng:hdd:100NN:100:nocache}
+ 	\end{subfigure}
+ 	\begin{subfigure}{0.24\textwidth}
+ 		\centering
+ 		\includegraphics[width=\textwidth]{exact_mapk_throughput_seismic_100GB_256_de_100NN_100_nocache}
+ 		\caption{Seismic100GB\\ 100-NN ($\bm{\epsilon}$)} 
+ 		\label{fig:approx:accuracy:qefficiency:seismic:100GB:de:hdd:100NN:100:nocache}
+ 	\end{subfigure}	
+ 	\begin{subfigure}{0.16\textwidth}
+ 		\centering
+ 		%\includegraphics[width=\textwidth]{exact_mapk_throughput_astro_100GB_256_ng_100NN_100_nocache}
+ 		\caption{Astro100GB\\100-NN (ng)} 
+ 		\label{fig:approx:accuracy:qefficiency:seismic:100GB:ng:hdd:100NN:100:nocache}
+ 	\end{subfigure}
+ 	\begin{subfigure}{0.16\textwidth}
+ 		\centering
+ 		%\includegraphics[width=\textwidth]{exact_mapk_throughput_astro_100GB_256_de_100NN_100_nocache}
+ 		\caption{Astro100GB\\ 100-NN ($\bm{\delta\epsilon}$)} 
+ 		\label{fig:approx:accuracy:qefficiency:seismic:100GB:de:hdd:100NN:100:nocache}
+ 	\end{subfigure}	
+ 	\caption{Efficiency vs. accuracy for other real datasets}	
+ 	\label{fig:approx:accuracy:efficiency:other:100GB:hdd}
+ \end{figure*}
+\end{comment}
+ 
+\begin{figure*}[tb]
+\begin{minipage}{\textwidth}
+	\centering
+\includegraphics[scale=0.18]{{full_epsilon_legend_25GB}}
+\end{minipage}
+\begin{minipage}{0.22\textwidth}
+		\captionsetup{justification=centering}
+		\captionsetup[subfigure]{justification=centering}
+		\begin{subfigure}{\textwidth}
+			%\includegraphics[width=\textwidth]{{exact_mapk_recall_sift_25GB_128_ng_100NN_100_nocache}}
+			\includegraphics[width=0.95\textwidth]{{exact_mapk_recall_sift_25GB_128_ng_100NN_100_nocache}}
+			\caption{Recall vs. MAP}  
+			\label{fig:approx:map:recall:sift:25GB:128:ng:hdd}
+		\end{subfigure}
+		%\begin{subfigure}{0.2\textwidth}
+		%	\centering
+		%		\includegraphics[width=\textwidth]{exact_mapk_recall_deep_25GB_96_ng_100NN_100_nocache}
+		%	\caption{Recall vs. MAP\\
+		%		(Deep25GB)} 
+		%	\label{fig:approx:map:recall:deep:25GB:96:ng:hdd}
+		%\end{subfigure}
+		%\\
+		\begin{subfigure}{\textwidth}
+			%\includegraphics[width=\textwidth]{{exact_mapk_mape_sift_25GB_128_ng_100NN_100_nocache}}
+			\includegraphics[width=0.95\textwidth]{{exact_mapk_mape_sift_25GB_128_ng_100NN_100_nocache}}
+			\caption{MRE vs. MAP}  
+			\label{fig:approx:map:mre:sift:25GB:128:ng:hdd}
+		\end{subfigure}
+		%\begin{subfigure}{0.2\textwidth}
+		%	\centering
+		%	\includegraphics[width=\textwidth]{exact_mapk_mape_deep_25GB_96_ng_100NN_100_nocache}f
+		%	\caption{MRE vs. MAP\\
+		%		(Deep25GB)} 
+		%	\label{fig:approx:map:mre:deep:25GB:96:ng:hdd}
+		%\end{subfigure}
+		\caption{{\color{black} Comparison of measures (Sift25GB)}}	
+		\label{fig:approx:map:recall:hdd}
+\end{minipage}
+\begin{minipage}{0.04\textwidth}
+\end{minipage}
+\begin{minipage}{0.76\textwidth}
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_synthetic_250GB_256_de_100NN_100_nocache_best}
+		\caption{Rand250GB} 
+		\label{fig:approx:accuracy:throughput:synthetic:250GB:256:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sift_250GB_128_de_100NN_100_nocache_best}
+		\caption{Sift250GB} 
+		\label{fig:approx:accuracy:throughput:sift:250GB:128:hdd:ng:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_deep_250GB_96_de_100NN_100_nocache_best}
+		\caption{Deep250GB} 
+		\label{fig:approx:accuracy:throughput:deep:250GB:96:hdd:ng:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_sald_100GB_128_de_100NN_100_nocache}
+		\caption{Sald100GB} 
+		\label{fig:approx:accuracy:throughput:sald:100GB:128:hdd:ng:100NN:100:nocache:best}
+	\end{subfigure}	
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_throughput_seismic_100GB_256_de_100NN_100_nocache}
+		\caption{Seismic100GB} 
+		\label{fig:approx:accuracy:throughput:seismic:100GB:256:hdd:ng:100NN:100:nocache:best}
+	\end{subfigure}	
+
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_data_synthetic_250GB_256_de_100NN_100_nocache_best}
+		\caption{Rand250GB} 
+		\label{fig:approx:accuracy:data:synthetic:250GB:256:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_data_sift_250GB_128_de_100NN_100_nocache_best}
+		\caption{Sift250GB} 
+		\label{fig:approx:accuracy:data:sift:250GB:128:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_data_deep_250GB_96_de_100NN_100_nocache_best}
+		\caption{Deep250GB} 
+		\label{fig:approx:accuracy:data:deep:250GB:96:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_data_sald_100GB_128_de_100NN_100_nocache}
+		\caption{Sald100GB} 
+		\label{fig:approx:accuracy:data:sald:100GB:128:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_data_seismic_100GB_256_de_100NN_100_nocache}
+		\caption{Seismic100GB} 
+		\label{fig:approx:accuracy:data:seismic:100GB:256:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_synthetic_250GB_256_de_100NN_100_nocache_best}
+		\caption{Rand250GB} 
+		\label{fig:approx:accuracy:random:synthetic:250GB:256:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_sift_250GB_128_de_100NN_100_nocache_best}
+		\caption{Sift250GB} 
+		\label{fig:approx:accuracy:random:sift:250GB:128:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_deep_250GB_96_de_100NN_100_nocache_best}
+		\caption{Deep250GB} 
+		\label{fig:approx:accuracy:random:deep:250GB:96:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_sald_100GB_128_de_100NN_100_nocache}
+		\caption{Sald100GB} 
+		\label{fig:approx:accuracy:random:sald:100GB:128:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_seismic_100GB_256_de_100NN_100_nocache}
+		\caption{Seismic100GB} 
+		\label{fig:approx:accuracy:random:seismic:100GB:256:hdd:de:100NN:100:nocache:best}
+	\end{subfigure}
+	\caption{{\color{black} Efficiency vs. accuracy for the best methods ($\bm{\epsilon}$-approximate)}}
+	\label{fig:approx:accuracy:data:250GB:hdd:best}
+\end{minipage}
+\end{figure*}
+
+\noindent\textbf{Amount of data accessed.} 
+As expected, both DSTree and iSAX2+ need to access more data as the accuracy increases. 
+Nevertheless, we observe that to achieve accuracies of almost 1, both methods access close to 100\% of the data for Sift250GB  (Figure~\ref{fig:approx:accuracy:data:sift:250GB:128:hdd:de:100NN:100:nocache:best}), Deep250GB (Figure~\ref{fig:approx:accuracy:data:deep:250GB:96:hdd:de:100NN:100:nocache:best}) and Seismic100GB (Figure~\ref{fig:approx:accuracy:data:seismic:100GB:256:hdd:de:100NN:100:nocache:best}), compared to 10\% of data accessed on Sald100GB (Figure~\ref{fig:approx:accuracy:data:sald:100GB:128:hdd:de:100NN:100:nocache:best}) and Rand250GB. (Figure~\ref{fig:approx:accuracy:data:synthetic:250GB:256:hdd:de:100NN:100:nocache:best}). 
+The percentage of accessed data also varies among real datasets, Deep250GB and Sift250GB requiring the most. Note that for some datasets, a MAP of 1 is achievable with minimal data access. For instance DSTree needs to access about 1\% of the data to get a MAP of 1 on Sald100GB (Figure~\ref{fig:approx:accuracy:data:sald:100GB:128:hdd:de:100NN:100:nocache:best}).
+
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_data_synthetic_250GB_256_de_100NN_100_nocache}
+		\caption{Rand250GB} 
+		\label{fig:approx:accuracy:data:synthetic:250GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_data_sald_100GB_128_de_100NN_100_nocache}
+		\caption{Sald100GB} 
+		\label{fig:approx:accuracy:data:sald:100GB:128:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_data_seismic_100GB_256_de_100NN_100_nocache}
+		\caption{Seismic100GB} 
+		\label{fig:approx:accuracy:data:seismic:100GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_data_sift_250GB_128_de_100NN_100_nocache}
+		\caption{Sift250GB} 
+		\label{fig:approx:accuracy:data:sift:250GB:128:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		%\includegraphics[width=\textwidth]{exact_mapk_data_deep_250GB_96_de_100NN_100_nocache}
+		\caption{Deep250GB} 
+		\label{fig:approx:accuracy:data:deep:250GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\caption{Percent of accessed data vs. accuracy for different datasets (100-NN)}	
+	\label{fig:approx:accuracy:data:250GB:hdd}
+\end{figure*}
+\end{comment}
+
+\noindent\textbf{Number of Random I/Os.} 
+To understand the nature of the data accesses discussed above, we report the number of random I/Os in Figure~\ref{fig:approx:accuracy:data:250GB:hdd:best} (bottom row). 
+Overall, iSAX2+ incurs a higher number of random I/Os for all datasets. 
+This is because iSAX2+ has a larger number of leaves, with a smaller fill factor than DSTree~\cite{journal/pvldb/echihabi2018}. 
+For instance, the large number of random I/Os incurred by iSAX2+ (Figure~\ref{fig:approx:accuracy:random:seismic:100GB:256:hdd:de:100NN:100:nocache:best}) is what explains the faster runtime of DSTree on the Seismic100GB dataset (Figure~\ref{fig:approx:accuracy:throughput:seismic:100GB:256:hdd:ng:100NN:100:nocache:best}), even if DSTree accesses more data than iSAX2+ for higher MAP values (Figure~\ref{fig:approx:accuracy:data:seismic:100GB:256:hdd:de:100NN:100:nocache:best}). 
+The Sald100GB dataset is an exception to this trend 
+as iSAX2+ outperforms DSTree on all accuracies except for MAP is 1 (Figure~\ref{fig:approx:accuracy:throughput:sald:100GB:128:hdd:ng:100NN:100:nocache:best}), because it accesses less data incuring almost the same random I/O (Figures~\ref{fig:approx:accuracy:data:sald:100GB:128:hdd:de:100NN:100:nocache:best} and~\ref{fig:approx:accuracy:random:sald:100GB:128:hdd:de:100NN:100:nocache:best}).
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		%\includegraphics[width=\textwidth]{exact_mapk_random_synthetic_250GB_256_de_100NN_100_nocache}
+		\caption{Rand250GB} 
+		\label{fig:approx:accuracy:random:synthetic:250GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_sald_100GB_128_de_100NN_100_nocache}
+		\caption{Sald100GB} 
+		\label{fig:approx:accuracy:random:sald:100GB:128:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_seismic_100GB_256_de_100NN_100_nocache}
+		\caption{Seismic100GB} 
+		\label{fig:approx:accuracy:random:seismic:100GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		%\includegraphics[width=\textwidth]{exact_mapk_random_sift_250GB_128_de_100NN_100_nocache}
+		\caption{Sift250GB} 
+		\label{fig:approx:accuracy:random:sift:250GB:128:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.19\textwidth}
+		\centering
+		%\includegraphics[width=\textwidth]{exact_mapk_random_deep_250GB_96_de_100NN_100_nocache}
+		\caption{Deep250GB} 
+		\label{fig:approx:accuracy:random:deep:250GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\caption{Number of random accesses  vs. accuracy (100-NN)}	
+	\label{fig:approx:accuracy:random:250GB:hdd}
+\end{figure*}
+\end{comment}
+
+\noindent\textbf{Effect of k.} Figure~\ref{fig:approx:efficiency:k:hdd} summarizes experiments varying k on different datasets in-memory and on-disk. 
+We measure the total time required to complete a workload of 100 queries for each value of k. 
+We observe that %for the Deep datasets, 
+finding the first neighbor is the most costly operation, while finding the additional neighbors is much cheaper. 
+%For the Rand datasets, the total time increases steadily with higher k, while methods behave differently on the iSAX2+ workloads {\bf ??? what is an isax workload? ???}, where iSAX2+ spends most of its time finding the first neighbor and DSTree's cost gradually increases as more neighbors are retrieved. {\bf ??? I don't understand the last sentence: rewrite ???}
+
+\begin{figure}[tb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{0.32\columnwidth}
+		\centering
+		%\includegraphics[width=\columnwidth]{{exact_k_time_synthetic_25GB_256_de_100_nocache}}
+		\includegraphics[scale=0.23]{{exact_k_time_synthetic_25GB_256_de_100_nocache}}		\caption{Rand25GB}  
+		\label{fig:approx:efficiency:k:hdd:rand:25GB}
+	\end{subfigure}
+	\begin{subfigure}{0.32\columnwidth}
+		\centering
+		\includegraphics[scale=0.23]{{exact_k_time_sift_25GB_128_de_100_nocache}}\\
+		\caption{Sift25GB}  
+		\label{fig:approx:efficiency:k:hdd:sift:25GB}
+	\end{subfigure}
+	\begin{subfigure}{0.32\columnwidth}
+		\centering
+		\includegraphics[scale=0.23]{{exact_k_time_deep_25GB_96_de_100_nocache}}
+		\caption{Deep25GB}  
+		\label{fig:approx:efficiency:k:hdd:deep:25GB}
+	\end{subfigure}\\
+	\begin{subfigure}{0.32\columnwidth}
+		\centering
+		\includegraphics[scale=0.23]{exact_k_time_synthetic_250GB_256_de_100_nocache}
+		\caption{Rand250GB} 
+		\label{fig:approx:efficiency:k:hdd:rand:250GB}
+	\end{subfigure}
+	\begin{subfigure}{0.32\columnwidth}
+		\centering
+		\includegraphics[scale=0.23]{exact_k_time_sift_250GB_128_de_100_nocache}
+		\caption{Sift250GB} 
+		\label{fig:approx:efficiency:k:hdd:sift:250GB}
+	\end{subfigure}
+	\begin{subfigure}{0.32\columnwidth}
+		\centering
+		\includegraphics[scale=0.23]{exact_k_time_deep_250GB_96_de_100_nocache}
+		\caption{Deep250GB} 
+		\label{fig:approx:efficiency:k:hdd:deep:250GB}
+	\end{subfigure}
+	\caption{Efficiency vs. k ($\bm{\epsilon}$-approximate)}	
+	\label{fig:approx:efficiency:k:hdd}
+	\vspace*{-0.5cm}
+\end{figure}
+
+\noindent\textbf{Effect of $\delta$ and $\epsilon$.} 
+In Figure~\ref{fig:approx:accuracy_efficiency:delta:epsilon:synthetic:250GB:hdd}, we describe in more detail how varying $\delta$ and $\epsilon$ affects the performance of DSTree and iSAX2+. 
+Figure~\ref{fig:approx:efficiency:epsilon:synthetic:250GB:hdd} shows that the throughput of both methods increases dramatically with increasing $\epsilon$. 
+For example, a small value of $\epsilon = 5$ increases the throughput of iSAX2+ by two orders of magnitude, when compared to exact search ($\epsilon$ = 0). 
+Moreover, note that both methods return the actual exact answers for small $\epsilon$ values, and accuracy drops only as $\epsilon$ goes beyond $2$ (Figure~\ref{fig:approx:accuracy:mapk:epsilon:synthetic:250GB:hdd}).
+In addition, Figure~\ref{fig:approx:accuracy:mape:epsilon:synthetic:250GB:hdd} shows that the actual approximation error MRE is well below the user-tolerated threshold (represented by $\epsilon$), even for $\epsilon$ values well above $2$.
+The above observations mean that these methods can be used in approximate mode, achieving very high throughput, while still returning answers that are exact (or very close to the exact).
+
+As the probability $\delta$ increases, throughput stays constant and only plummets when search becomes exact ($\delta =1$ in Figure~\ref{fig:approx:efficiency:delta:synthetic:250GB:hdd}).
+Similarly, accuracy also stays constant, then slightly increases (for a very high $\delta$ of 0.99), reaching 1 for exact search (Figure~\ref{fig:approx:accuracy:delta:synthetic:250GB:hdd}).
+Accuracy plateaus as $\delta$ increases, because the first $ng$-approximate answer found by both algorithms is very close to the exact answer (Figures~\ref{fig:approx:accuracy:mapk:epsilon:synthetic:250GB:hdd} and~\ref{fig:approx:accuracy:mape:epsilon:synthetic:250GB:hdd}) and better than the approximation of $r_\delta$, thus the stopping condition is never triggered. 
+When a high value of $\delta$ is used, the stopping condition takes effect for some queries, but the runtime is very close to that of the exact algorithm.
+
+\begin{figure}[tb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{0.30\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{{exact_epsilon_throughput_synthetic_250GB_256_de_100NN_100_nocache}}
+		\caption{Time vs. $\bm{\epsilon}$ \\
+			($\bm{\delta = 1}$)}  
+		\label{fig:approx:efficiency:epsilon:synthetic:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.30\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{exact_epsilon_mapk_synthetic_250GB_256_de_100NN_100_nocache}
+		\caption{\color{black} MAP vs. $\bm{\epsilon}$ \\ ($\bm{\delta = 1}$)}	
+		\label{fig:approx:accuracy:mapk:epsilon:synthetic:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.30\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{exact_epsilon_mape_synthetic_250GB_256_de_100NN_100_nocache}
+		\caption{MRE vs. $\bm{\epsilon}$ \\
+			($\bm{\delta = 1}$)}  
+		\label{fig:approx:accuracy:mape:epsilon:synthetic:250GB:hdd}
+	\end{subfigure}\\
+	\begin{subfigure}{0.30\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{{exact_delta_throughput_synthetic_250GB_256_de_100NN_100_nocache}}
+		\caption{Time vs. $\bm{\delta}$ \\
+			($\bm{\epsilon = 0}$)}  
+		\label{fig:approx:efficiency:delta:synthetic:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.34\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{exact_delta_mapk_synthetic_250GB_256_de_100NN_100_nocache}
+		\caption{\color{black} MAP vs. $\bm{\delta}$ \\ ($\bm{\epsilon = 0}$)}
+		\label{fig:approx:accuracy:delta:synthetic:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.30\columnwidth}
+	%\centering
+	%\hspace*{1cm}
+	\includegraphics[scale=0.15]{{best_epsilon_legend}}
+	\end{subfigure}	
+	\caption{Accuracy and efficiency vs. $\bm{\delta}$ and $\bm{\epsilon}$
+		%\\ (Dataset= Rand250GB, Queries = 100-NN ($\bm{\delta\epsilon}$)
+	}	
+	\vspace*{-0.4cm}
+	\label{fig:approx:accuracy_efficiency:delta:epsilon:synthetic:250GB:hdd}
+\end{figure}
+
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{best_epsilon_legend}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_epsilon_throughput_synthetic_250GB_256_de_100NN_100_nocache}}
+		\caption{Efficiency vs. $\bm{\epsilon}$ \\
+			($\bm{\delta = 1}$)}  
+		\label{fig:approx:efficiency:epsilon:synthetic:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_epsilon_mapk_synthetic_250GB_256_de_100NN_100_nocache}
+		\caption{MAP@K vs. $\bm{\epsilon}$ \\
+			($\bm{\delta = 1}$)}  
+		\label{fig:approx:accuracy:mapk:epsilon:synthetic:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_epsilon_mape_synthetic_250GB_256_de_100NN_100_nocache}
+		\caption{MAPE vs. $\bm{\epsilon}$ \\
+			($\bm{\delta = 1}$)}  
+		\label{fig:approx:accuracy:mape:epsilon:synthetic:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_delta_throughput_synthetic_250GB_256_de_100NN_100_nocache}}
+		\caption{Efficiency vs. $\bm{\delta}$ \\
+			($\bm{\epsilon = 0}$)}  
+		\label{fig:approx:efficiency:delta:synthetic:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.18\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_delta_mapk_synthetic_250GB_256_de_100NN_100_nocache}
+		\caption{Accuracy vs. $\bm{\delta}$ \\
+			($\bm{\epsilon = 0}$)} 
+		\label{fig:approx:accuracy:delta:synthetic:250GB:hdd}
+	\end{subfigure}
+	\caption{Accuracy and efficiency vs. $\bm{\delta}$ and $\bm{\epsilon}$\\ (100-NN ($\bm{\delta\epsilon}$))
+		(Dataset = Rand250GB, Data series length=256)}	
+	\label{fig:approx:accuracy_efficiency:delta:epsilon:synthetic:250GB:hdd}
+\end{figure*}
+\end{comment}
+
+%\noindent\textbf{BSF Analysis.}
+
+}
+
+
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+	\centering
+	%\hspace*{1cm}
+	\includegraphics[scale=0.15]{{box_plot_k_data_partial_legend}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_k_data_synthetic_25GB_256_de_map1_100_nocache}
+		\caption{Rand25GB} 
+		\label{fig:approx:k:data:synthetic:25GB:256:hdd:de:map1:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_k_data_sift_25GB_128_de_map1_100_nocache}
+		\caption{Sift25GB} 
+		\label{fig:approx:k:data:sift:25GB:128:hdd:de:map1:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_k_data_deep_25GB_96_de_map1_100_nocache}
+		\caption{Deep25GB} 
+		\label{fig:approx:k:data:deep:25GB:96:hdd:de:map1:100:nocache}
+	\end{subfigure}	
+    \begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_k_data_deep_25GB_96_de_map1_bis_100_nocache}
+		\caption{Deep25GB-new-gt} 
+		\label{fig:approx:k:data:deep:250GB:96:hdd:de:map1:100:nocache}
+    \end{subfigure}
+    \begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_k_data_deep_25GB_96_de_map1_rand_100_nocache}
+		\caption{Deep25GB-new-rand} 
+		\label{fig:approx:k:data:deep:250GB:96:hdd:de:map1:100:nocache}
+	\end{subfigure}
+	\caption{Percent of accessed data vs. k for different datasets (Dataset Size = 25GB, MAP = 1)}	
+	\label{fig:approx:k:data:maps:1:25GB:hdd}
+\end{figure*}
+
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.15]{{box_plot_k_data_partial_legend}}\\
+	\end{subfigure}	
+%	\begin{subfigure}{0.16\textwidth}
+%		\centering
+%		\includegraphics[width=\textwidth]{exact_k_data_synthetic_250GB_256_de_map1_100_nocache}
+%		\caption{Rand250GB} 
+%		\label{fig:approx:k:data:synthetic:250GB:256:hdd:de:map1:100:nocache}
+%	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{exact_k_data_synthetic_250GB_256_de_map1_100_nocache}
+	\caption{Rand250GB} 
+	\label{fig:approx:k:data:synthetic:250GB:256:hdd:de:map1:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_k_data_sift_250GB_128_de_map1_100_nocache}
+		\caption{Sift250GB} 
+		\label{fig:approx:k:data:sift:250GB:128:hdd:de:map1:100:nocache}
+	\end{subfigure}
+		\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_k_data_deep_250GB_96_de_map1_100_nocache}
+		\caption{Deep250GB} 
+		\label{fig:approx:k:data:deep:250GB:96:hdd:de:map1:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+%		\centering
+%		\includegraphics[width=\textwidth]{exact_k_data_sift_250GB_128_de_map1_100_nocache}
+%		\caption{Sift250GB} 
+%		\label{fig:approx:k:data:sift:250GB:128:hdd:de:map1:100:nocache}
+		\centering
+		\includegraphics[width=\textwidth]{exact_k_data_deep_250GB_96_de_map1_bis_100_nocache}
+		\caption{Deep250GB-new-gt} 
+		\label{fig:approx:k:data:deep:250GB:96:hdd:de:map1:100:nocache}
+	\end{subfigure}
+    \begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_k_data_deep_250GB_96_de_map1_rand_100_nocache}
+		\caption{Deep250GB-new-rand} 
+		\label{fig:approx:k:data:deep:250GB:96:hdd:de:map1:100:nocache}
+	\end{subfigure}
+	\caption{Percent of accessed data vs. k for different datasets (Dataset Size = 250GB, MAP = 1)}	
+	\label{fig:approx:k:data:maps:1:250GB:hdd}
+\end{figure*}
+\end{comment}
+
+\begin{comment}
+
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{exact_mapk_random_synthetic_25GB_256_ng_100NN_100_nocache}
+	\caption{Rand25GB\\(100-NN (ng))} 
+	\label{fig:approx:accuracy:random:synthetic:25GB:256:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{exact_mapk_random_synthetic_25GB_256_de_100NN_100_nocache}
+	\caption{Rand25GB\\(100-NN ($\bm{\delta\epsilon}$))} 
+	\label{fig:approx:accuracy:random:synthetic:25GB:256:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_sift_25GB_128_ng_100NN_100_nocache}
+		\caption{Sift25GB\\(100-NN (ng))} 
+		\label{fig:approx:accuracy:random:sift:25GB:128:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_sift_25GB_128_de_100NN_100_nocache}
+		\caption{Sift25GB\\(100-NN ($\bm{\delta\epsilon}$))} 
+		\label{fig:approx:accuracy:random:sift:25GB:128:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_mapk_random_deep_25GB_96_ng_100NN_100_nocache}}
+		\caption{Deep25GB\\(100-NN (ng))} 
+		\label{fig:approx:accuracy:random:deep:25GB:96:hdd:ng:100NN:100:nocache}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_mapk_random_deep_25GB_96_de_100NN_100_nocache}
+		\caption{Deep25GB\\(100-NN ($\bm{\delta\epsilon}$))} 
+		\label{fig:approx:accuracy:random:deep:25GB:96:hdd:de:100NN:100:nocache}
+	\end{subfigure}
+	\caption{Random accesses vs. accuracy}	
+	\label{fig:approx:accuracy:random:25GB:hdd}
+\end{figure*}
+
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_epsilon_throughtput_deep_25GB_96_ng_100NN_100_nocache}}
+		\caption{Efficiency vs. $\bm{\epsilon}$ \\
+		($\bm{\delta = 1}$)}  
+		\label{fig:approx:efficiency:epsilon:deep:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_epsilon_mapk_deep_250GB_96_de_100NN_100_nocache}
+		\caption{Accuracy vs. $\bm{\epsilon}$ \\
+		($\bm{\delta = 1}$)}  
+		\label{fig:approx:accuracy:epsilon:deep:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_epsilon_throughtput_deep_25GB_96_ng_100NN_100_nocache}}
+		\caption{Efficiency vs. $\bm{\delta}$ \\
+			($\bm{\epsilon = 0}$)}  
+		\label{fig:approx:efficiency:epsilon:deep:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_epsilon_mapk_deep_250GB_96_de_100NN_100_nocache}
+		\caption{Accuracy vs. $\bm{\delta}$ \\
+		 ($\bm{\epsilon = 0}$)} 
+		\label{fig:approx:accuracy:epsilon:deep:250GB:hdd}
+	\end{subfigure}
+	\caption{Accuracy and efficiency vs. $\bm{\delta}$ and $\bm{\epsilon}$\\
+			(Dataset = Deep250GB, Data series length=96)}	
+		\label{fig:approx:accuracy_efficiency:epsilon:deep:250GB:hdd}
+\end{figure*}
+
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup[subfigure]{justification=centering}
+	\begin{subfigure}{\textwidth}
+		\centering
+		%\hspace*{1cm}
+		\includegraphics[scale=0.23]{{full_epsilon_legend}}\\
+	\end{subfigure}	
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_epsilon_throughput_sift_250GB_128_de_100NN_100_nocache}}
+		\caption{Efficiency vs. $\bm{\epsilon}$ \\
+			($\bm{\delta = 1}$)}  
+		\label{fig:approx:efficiency:epsilon:sift:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_epsilon_mapk_sift_250GB_128_de_100NN_100_nocache}
+		\caption{Accuracy vs. $\bm{\epsilon}$ \\
+			($\bm{\delta = 1}$)}  
+		\label{fig:approx:accuracy:epsilon:sift:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{{exact_delta_throughput_sift_250GB_128_de_100NN_100_nocache}}
+		\caption{Efficiency vs. $\bm{\delta}$ \\
+			($\bm{\epsilon = 0}$)}  
+		\label{fig:approx:efficiency:epsilon:sift:250GB:hdd}
+	\end{subfigure}
+	\begin{subfigure}{0.16\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_delta_mapk_sift_250GB_128_de_100NN_100_nocache}
+		\caption{Accuracy vs. $\bm{\delta}$ \\
+			($\bm{\epsilon = 0}$)} 
+		\label{fig:approx:accuracy:epsilon:sift:250GB:hdd}
+	\end{subfigure}
+	\caption{Accuracy and efficiency vs. $\bm{\delta}$ and $\bm{\epsilon}$\\
+		(Dataset = Sift250GB, Data series length=128)}	
+	\label{fig:approx:accuracy_efficiency:epsilon:deep:250GB:hdd}
+\end{figure*}
+\end{comment}
+
+
+
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\begin{subfigure}{\textwidth}
+	\centering
+	%\hspace*{1cm}
+	\includegraphics[scale=0.23]{{full_epsilon_legend}}\\
+	\end{subfigure}	
+
+\begin{subfigure}{0.35\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{incremental_cache_combined_synthetic_25GB_10NN_100_noylabel_zoom_full_exact}}
+	\caption{Exact Query Answering}
+	\label{fig:exact:datasize:time:idxproc:cache:combined:indexing}
+\end{subfigure}
+\begin{subfigure}{0.35\textwidth}
+	\centering{
+		\includegraphics[width=\textwidth]{{incremental_cache_combined_synthetic_25GB_10NN_100_noylabel_zoom_full_approx}}
+		\caption{Approximate Query Answering}}
+		\label{fig:exact:datasize:time:idxproc:cache:combined:100exact}
+	\end{subfigure}
+		
+		\caption{Breakdown of kNN Search Cost by k\\
+			(Dataset Size = 25GB, Data Series Length=256, Queries = 100 10-NN)
+			%),} {\color{black} \sout{Workload = Synth-Rand}})
+			%		\\(HDD, Synthetic Datasets, Data Series Length = 256)
+		}	
+		\label{fig:exact:datasize:time:epsilon:combined}
+	\end{figure*}
+
+\end{comment}
+
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup{justification=centering}
+	\begin{subfigure}{\textwidth}
+	\centering
+	%\hspace*{1cm}
+	\includegraphics[scale=0.23]{{full_epsilon_legend_new}}\\
+	\end{subfigure}	
+
+\begin{subfigure}{0.30\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_epsilon_bsf_time_ratio_synthetic_250GB_256_de_1NN_100_nocache}}
+	\caption{Time to find the exact answer}
+\label{fig:exact:datasize:time:idxproc:cache:combined:idx100exact}
+\end{subfigure}
+%\begin{subfigure}{0.30\textwidth}
+%\centering
+%\includegraphics[width=\textwidth] {{exact_synthetic_epsilon_bsf_snapshots_cache_combined_100}}
+%\caption{Synthetic BSF Steps} 
+%\label{fig:exact:datasize:time:idxproc:cache:combined:idx10Kexact}
+%\end{subfigure}	
+%\begin{subfigure}{0.30\textwidth}
+%\centering
+%\includegraphics[width=\textwidth] {{exact_deep1b_epsilon_bsf_snapshots_cache_combined_100}}
+%\caption{Deep1B BSF Steps}
+%\label{fig:exact:datasize:time:idxproc:cache:combined:idx10Kexact}
+%\end{subfigure}	
+
+\caption{BSF Analysis \\
+(Dataset Size = 250GB, Data Series Length=256, Queries = 100 1-NN)
+%),} {\color{black} \sout{Workload = Synth-Rand}})
+%		\\(HDD, Synthetic Datasets, Data Series Length = 256)
+}	
+\label{fig:exact:datasize:time:epsilon:combined}
+\end{figure*}
+\{comment}
+
+
+\begin{comment}
+\begin{figure*}[!htb]
+	\captionsetup{justification=centering}
+	\captionsetup{justification=centering}
+\begin{subfigure}{0.30\textwidth}
+\centering
+\includegraphics[width=\textwidth] {{approx_epsilon_time_proc_maxpolicy_cache_combined_100_10NN_synthetic}}
+\caption{Synthetic}
+\label{fig:exact:datasize:time:idxproc:cache:combined:idx10Kexact}
+\end{subfigure}	
+
+\caption{Node scheduling policy comparison \\
+(Dataset Size = 250GB, Data Series Length=256, Queries = 100 10-NN)
+%),} {\color{black} \sout{Workload = Synth-Rand}})
+%		\\(HDD, Synthetic Datasets, Data Series Length = 256)
+}	
+\label{fig:exact:datasize:time:epsilon:combined}
+\end{figure*}
+\end{comment}
+
+
+\begin{comment}
+exact_datasize_time_idxproc_nocache_isax2+
+\begin{figure*}[tb]
+
+\captionsetup{justification=centering}
+	\begin{subfigure}\columnwidth}
+\centering
+\hspace*{0.5cm}
+\includegraphics[scale=0.25]{{epsilon_legend}}\\
+\end{subfigure}	
+
+\begin{subfigure}{0.24\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_datasize_time_exactproc_cache_combined_100_exact_eps0_noylabel}}
+	\caption{\bm{\epsilon = 0 \ (exact)} }
+	\label{fig:exact:datasize:time:idxproc:cache:combined:indexing}
+\end{subfigure}
+\begin{subfigure}{0.24\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{exact_datasize_time_exactproc_cache_combined_100_exact_eps1_noylabel}
+	\caption{\bm{\epsilon = 1}}
+	\label{fig:exact:datasize:time:idxproc:cache:combined:100exact}
+\end{subfigure}
+\begin{subfigure}{0.24\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_datasize_time_exactproc_cache_combined_100_exact_eps5_noylabel}}
+	\caption{\bm{\epsilon = 5}}
+	\label{fig:exact:datasize:time:idxproc:cache:combined:idx100exact}
+\end{subfigure}
+\begin{subfigure}{0.24\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_datasize_time_exactproc_cache_combined_100_exact_eps10_noylabel}}
+	\caption{\bm{\epsilon = 10}}
+	\label{fig:exact:datasize:time:idxproc:cache:combined:idx10Kexact}
+\end{subfigure}	
+
+\caption{Scalability comparison (Different epsilon) %),} {\color{black} \sout{Workload = Synth-Rand}})
+	%		\\(HDD, Synthetic Datasets, Data Series Length = 256)
+}	
+\label{fig:exact:datasize:time:epsilon:combined}
+\end{figure*}
+
+
+\begin{figure*}[tb]
+	%\hspace*{\fill}
+\begin{subfigure}{0.24\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{exact_datasize_recall_cache_combined_100_eps1_noylabel}
+	\caption{\bm{\epsilon = 1}}
+	\label{fig:exact:datasize:time:idxproc:cache:combined:100exact}
+\end{subfigure}
+\begin{subfigure}{0.24\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_datasize_recall_cache_combined_100_eps5_noylabel}}
+	\caption{\bm{\epsilon = 5}}
+	\label{fig:exact:datasize:time:idxproc:cache:combined:idx100exact}
+\end{subfigure}
+\begin{subfigure}{0.24\textwidth}
+	\centering
+	\includegraphics[width=\textwidth] {{exact_datasize_recall_cache_combined_100_eps10_noylabel}}
+	\caption{\bm{\epsilon = 10}}
+	\label{fig:exact:datasize:time:idxproc:cache:combined:idx10Kexact}
+\end{subfigure}	
+
+\caption{Recall (Different epsilon) %),} {\color{black} \sout{Workload = Synth-Rand}})
+	%		\\(HDD, Synthetic Datasets, Data Series Length = 256)
+}		\label{fig:exact:datasize:recall:combined}
+\end{figure*}
+
+
+\begin{figure*}[tb]
+	%\hspace*{\fill}
+	\begin{subfigure}{0.24\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{exact_datasize_error_cache_combined_100_eps1_noylabel}
+	\caption{\bm{\epsilon = 1}}
+		\label{fig:exact:datasize:time:idxproc:cache:combined:100exact}
+	\end{subfigure}
+	\begin{subfigure}{0.24\textwidth}
+		\centering
+		\includegraphics[width=\textwidth] {{exact_datasize_error_cache_combined_100_eps5_noylabel}}
+	\caption{\bm{\epsilon = 5}}
+		\label{fig:exact:datasize:time:idxproc:cache:combined:idx100exact}
+	\end{subfigure}
+	\begin{subfigure}{0.24\textwidth}
+		\centering
+		\includegraphics[width=\textwidth] {{exact_datasize_error_cache_combined_100_eps10_noylabel}}
+	\caption{\bm{\epsilon = 10}}
+		\label{fig:exact:datasize:time:idxproc:cache:combined:idx10Kexact}
+	\end{subfigure}	
+	
+	\caption{Relative Error (Different epsilon) %),} {\color{black} \sout{Workload = Synth-Rand}})
+		%		\\(HDD, Synthetic Datasets, Data Series Length = 256)
+	}
+\label{fig:exact:datasize:error:combined}
+\end{figure*}
+\end{comment}
+
+
+% \begin{figure*}[!htb]
+% 	\captionsetup{justification=centering}
+% 	\captionsetup[subfigure]{justification=centering}
+% 	\begin{subfigure}{0.31\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.3]{exact_query_time_cache_combined_25GB_100_exact}
+% 		\caption{Dataset size = 25GB}
+% 		\label{fig:exact:query:time:cache:combined:25:100:exact}
+% 	\end{subfigure}
+% 	\begin{subfigure}{0.31\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.3]{exact_query_time_cache_combined_50GB_100_exact}
+% 		\caption{Dataset size = 50GB}
+% 		\label{fig:exact:query:time:cache:combined:50:100:exact}
+% 	\end{subfigure}
+% 	\begin{subfigure}{0.31\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.3]{exact_query_time_cache_combined_100GB_100_exact}
+% 		\caption{Dataset size = 100GB}
+% 		\label{fig:exact:query:time:cache:combined:100:100:exact}
+% 	\end{subfigure}
+% 	\begin{subfigure}{0.31\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.3]{exact_query_time_cache_combined_250GB_100_exact}
+% 		\caption{Dataset size = 250GB}	\label{fig:exact:query:time:cache:combined:250:100:exact}
+% 	\end{subfigure}
+% 	\begin{subfigure}{0.31\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.3]{exact_query_time_cache_combined_500GB_100_exact}
+% 		\caption{Dataset size = 500GB}	\label{fig:exact:query:time:cache:combined:250:100:exact}
+% 	\end{subfigure}
+% 	\begin{subfigure}{0.31\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.3]{exact_query_time_cache_combined_1TB_100_exact}
+% 		\caption{Dataset size = 1TB}	\label{fig:exact:query:time:cache:combined:250:100:exact}
+% 	\end{subfigure}
+% 	\caption{Exact Methods Cumulative Query Cost For Synthetic Datasets \\ (Data Series Length = 256)}
+% 	\label{fig:exact:query:time:cache:combined}
+% \end{figure*}
+
+
+% \begin{figure*}[!htb]
+% 	\captionsetup{justification=centering}
+% 	\captionsetup[subfigure]{justification=centering}
+% 	\begin{subfigure}{0.24\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.22]{exact_query_time_cache_combined_25GB_100_hard_exact}
+% 		\caption{Dataset size = 25GB}
+% 		\label{fig:exact:query:time:cache:combined:25:100:exact}
+% 	\end{subfigure}
+% 	\hspace*{\fill} % separation between the subfigures
+% 	\begin{subfigure}{0.24\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.22]{exact_query_time_cache_combined_50GB_100_hard_exact}
+% 		\caption{Dataset size = 50GB}
+% 		\label{fig:exact:query:time:cache:combined:25:100:exact}
+% 	\end{subfigure}
+% 	\hspace*{\fill} % separation between the subfigures
+% 	\begin{subfigure}{0.24\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.22]{exact_query_time_cache_combined_100GB_100_hard_exact}
+% 		\caption{Dataset size = 100GB}
+% 		\label{fig:exact:query:time:cache:combined:25:100:exact}
+% 	\end{subfigure}
+% 	\hspace*{\fill} % separation between the subfigures
+% 	\begin{subfigure}{0.24\textwidth}
+% 		\centering
+% 		\includegraphics[scale=0.22]{exact_query_time_cache_combined_250GB_100_hard_exact}
+% 		\caption{Dataset size = 250GB}
+% 		\label{fig:exact:query:time:cache:combined:250:100:exact}
+% 	\end{subfigure}
+% 	\caption{Exact Methods Cumulative Query Cost For Synthetic Datasets \\ (Hard Queries, Data Series Length = 256) {\color{black} {\bf DO WE KEEP THIS?}}}
+% 	\label{fig:exact:hard:query:time:cache:combined}
+% \end{figure*}
+
+\begin{comment}
+content..The Input and Output times measure the times for reading and writing data to disk and the CPU time measures the time it takes to peform ime (time to traverse index and compare query and target time series), and Input IO time (time to read time series from disk).
+\end{comment}
+
+
+
+% Figure \ref{fig:exact:query:time:cache:combined} {\color{black} {\bf @Themi: Which of the subfigures to keep?}}.
+%  depicts the cumulative query cost for each index and dataset.
+%  We can see that it takes the UCR Suite the same time to answer each query whereas indexes pay a higher cost to answer certain queries.
+%  This is because it always scans the complete file.
+ % This is because the UCR Suite retrieves the raw data sequentially from a single file whereas an index needs to retrieve data from several leaves before finding the exact answer.
+ % For indexes, the cost of answering a given query depends on the number of leaves retrieved, the actual number of data series stored in each leaf and whether the data of this leaf is present in memory or in the caches.
+ % This trend is more pronounced for the iSAX2+ and ADS+ indexes since they have a much larger number of leaves compared to the DSTree per Figure~\ref{fig:exact:datasize:leaves:combined}.
+ % For the 100GB and 250GB datasets, we can see this behavior throughout the query workload.
+ % Whereas for the 50GB dataset, it is only observed for the first 25 queries.
+ % After answering these queries and since the dataset fits entirely in memory, data for all the leaves is still in memory, so the cost for answering subsequent queries becomes cheaper. As the dataset get larger, we can clearly see that indexes outperform sequential scan and that the DSTree is the overall winner.
+
+\begin{comment}
+\noindent{\textbf{Non normalized-data.}}
+We also ran experiments on non-normalized data {\color{black} {\bf FILL IN THE BLANKS!}}
+\end{comment}
+
+\begin{comment}
+
+
+\noindent\textbf{Pruning Ratio.}
+We measure the pruning ratio (higher is better) for all indexes across datasets and data series lengths. For the $Synth$-$Rand$ workload on synthetic datasets, we varied the size from 25GB to 1TB and the length from 128 to 16384. We observed that the pruning ratio remained stable for each method and that overall 
+ADS+ and VA+file have the best pruning ratio, followed by DSTree, iSAX2+ and SFA. We also ran experiments with a real workload ($Deep$-$Orig$), a controlled workload on the 100GB synthetic dataset ($Synth$-$Ctrl$), and controlled workloads on the real datasets ($Astro$-$Ctrl$, $Deep$-$Ctrl$, $SALD$-$Ctrl$ and $Seismic$-$Ctrl$). In the controlled workloads, we extract series from the dataset and add noise.
+Figure~\ref{fig:exact:data::pruning} summarizes these results. For lack of space, we only report the pruning ratio for the real datasets (all of size 100GB) and the 100GB synthetic dataset. 
+%The trend is different for the real datasets. 
+The pruning ratio for $Synth$-$Rand$ is the highest for all methods. We observe that the $Synth$-$Ctrl$ workload is more varied than $Synth$-$Rand$ since it contains harder queries with lower pruning ratios. The trend remains the same with ADS+ and VA+file having the best pruning ratio overall, followed by DSTree, iSAX2+ then SFA. For real dataset workloads, ADS+ and VA+file achieve the best pruning, followed by iSAX2+, DSTree, and then SFA. 
+%The pruning ratio for the SALD dataset is high for all methods whereas that of Astro is low ({\color{black}why?}). 
+%For the Deep1B queries, all methods have a lower pruning ratio on Deep-Ours except SFA which behaves poorly on Deep-Orig. 
+The relatively low pruning ratio for the SFA is most probably due to the large leaf size of 1,000,000. Once a leaf is retrieved, SFA accesses all series in the leaf, which reduces the pruning ratio significantly. 
+VA+file has a slightly better pruning ratio than ADS+, because it performs less random and sequential I/O, thanks to its tighter lower bound. 
+We note that the pruning ratio alone does not predict the performance of an index. In fact, this ratio provides a good estimate of the number of sequential operations that a method will perform, but it should be considered along with other measures like the number of random disk I/Os.
+\end{comment}
+
+
+

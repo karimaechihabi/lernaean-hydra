@@ -1,0 +1,4 @@
+/home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/CMakeFiles/edit_cache.dir
+/home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/CMakeFiles/rebuild_cache.dir
+/home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/CMakeFiles/hnsw.dir
+/home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/CMakeFiles/sift_test.dir

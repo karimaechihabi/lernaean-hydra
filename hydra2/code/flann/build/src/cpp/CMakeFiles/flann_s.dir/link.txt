@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../lib/libflann_s.a  CMakeFiles/flann_s.dir/flann/flann.cpp.o CMakeFiles/flann_s.dir/flann/ext/lz4.c.o CMakeFiles/flann_s.dir/flann/ext/lz4hc.c.o
+/usr/bin/ranlib ../../lib/libflann_s.a

@@ -1,0 +1,33 @@
+
+//  This is the README file for the dstree C implementation.
+//  The dstree is a Data-adaptive and Dynamic Segmentation 
+//  Index for Whole Matching on Time Series.
+//  URL link for paper here
+//  The original implementation was in Java.
+//
+//  This C version was developed by Karima Echihabi on 18/12/2016
+//  Copyright 2016 Paris Descartes University. All rights reserved.
+//
+//  The C version is based on isax code written by Zoumpatianos on 3/12/12.
+//  Copyright 2012 University of Trento. All rights reserved.
+
+--To compile and run, go to code directory: 
+
+-------------------DO ONCE TO SET UP ENVIRONMENT--------------------
+--Run 'aclocal' to generate an m4 environment for autotools to use:
+aclocal
+
+--Then run autoconf to turn our configure.ac into a configure script:
+autoconf
+
+--Then run automake to turn our Makefile.am into a Makefile.in:
+automake --add-missing
+
+
+-----------------------------COMPILE-------------------------------
+./configure
+make
+------------------------------RUN----------------------------------
+./dstree --help
+
+

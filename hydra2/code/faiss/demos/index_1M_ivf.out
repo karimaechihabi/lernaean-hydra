@@ -1,0 +1,30 @@
+Training on 10000 vectors
+Loading 10000 vectors of training data
+Loading 1000000 vectors of chunk 0
+Index_building_input_time_secs	0.311868	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_building_output_time_secs	0.000000	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_building_cpu_time_secs	1.816420	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_building_total_time_secs	2.128288	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_building_seq_input_count	1010000	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_building_seq_output_count	0	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_building_rand_input_count	0	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_building_rand_output_count	3	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_training_input_time_secs	0.004326	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_training_output_time_secs	0.000000	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_training_cpu_time_secs	0.000026	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_training_total_time_secs	0.004352	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_training_seq_input_count	10000	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_training_seq_output_count	0	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_training_rand_input_count	0	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_training_rand_output_count	1	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_total_input_time_secs	0.311868	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_total_output_time_secs	0.000000	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_total_cpu_time_secs	1.816420	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_total_time_secs	0.311868	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_total_seq_input_count	1010000	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_total_seq_output_count	0	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_total_rand_input_count	0	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_total_rand_output_count	3	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Index_size_MB	986.328168	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+Total_ts_count	1010000	/home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin	-1
+

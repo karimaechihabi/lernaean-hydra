@@ -1,0 +1,7 @@
+This is the iSAX 2+ index.
+
+To run use:
+./configure
+make
+
+./isax2plus --help

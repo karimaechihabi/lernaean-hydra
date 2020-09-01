@@ -1,0 +1,65 @@
+[0.000 s] Generating 100000 vectors in 128D for training
+[0.092 s] Training the index
+Training level-1 quantizer
+Training level-1 quantizer on 100000 vectors in 128D
+Training IVF residual
+  Input training set too big (max size is 65536), sampling 65536 / 100000 vectors
+computing residuals
+training 4x256 product quantizer on 65536 vectors in 128D
+Training PQ slice 0/4
+Clustering 65536 points in 32D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (11.37 s, search 11.28 s): objective=113347 imbalance=1.004 nsplit=0       
+Training PQ slice 1/4
+Clustering 65536 points in 32D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.01 s
+  Iteration 24 (10.23 s, search 10.20 s): objective=113096 imbalance=1.005 nsplit=0       
+Training PQ slice 2/4
+Clustering 65536 points in 32D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.01 s
+  Iteration 24 (10.92 s, search 10.81 s): objective=113072 imbalance=1.004 nsplit=0       
+Training PQ slice 3/4
+Clustering 65536 points in 32D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.01 s
+  Iteration 24 (9.89 s, search 9.86 s): objective=113133 imbalance=1.004 nsplit=0       
+precomputing IVFPQ tables type 1
+[253.191 s] storing the pre-trained index to /tmp/index_trained.faissindex
+[253.192 s] Building a dataset of 200000 vectors to index
+[253.364 s] Adding the vectors to the index
+IndexIVFPQ::add_core_o: adding 0:32768 / 200000
+ add_core times: 6608.444 852.280 1.558 
+IndexIVFPQ::add_core_o: adding 32768:65536 / 200000
+ add_core times: 6764.604 770.945 1.300 
+IndexIVFPQ::add_core_o: adding 65536:98304 / 200000
+ add_core times: 6971.038 751.703 1.297 
+IndexIVFPQ::add_core_o: adding 98304:131072 / 200000
+ add_core times: 6337.406 761.800 1.190 
+IndexIVFPQ::add_core_o: adding 131072:163840 / 200000
+ add_core times: 6325.741 760.723 1.248 
+IndexIVFPQ::add_core_o: adding 163840:196608 / 200000
+ add_core times: 6332.717 763.689 1.488 
+IndexIVFPQ::add_core_o: adding 196608:200000 / 200000
+ add_core times: 661.122 87.275 0.167 
+[298.122 s] imbalance factor: 1.22261
+[298.128 s] Searching the 5 nearest neighbors of 9 vectors in the index
+[298.128 s] Query results (vector ids, then distances):
+query  0:    1234  118971  172185  112513  139343 
+     dis: 6.87459  9.3647 9.60012 9.72686 9.90118 
+query  1:    1235  124187  168578   91649  128260 
+     dis: 7.19489 10.1937 10.2277 10.3335 10.5651 
+query  2:    1236   48004   94903  101079  114849 
+     dis: 7.58429  10.727 11.0692 11.1326  11.184 
+query  3:    1237  114988  184190   92808   78330 
+     dis: 7.19812 10.1447 10.2066 10.2793 10.5878 
+query  4:    1238  130441   46317   61315   66001 
+     dis: 6.99109 9.73148 10.0152  10.023 10.2058 
+query  5:    1239  165164   60106  113652  129635 
+     dis: 7.55782 9.91535 9.94923 10.0549  10.289 
+query  6:    1240  166799   18908  161767  187753 
+     dis: 7.34464 9.33059 9.37559 9.61919 9.73227 
+query  7:    1241    2804  138091   79270  196812 
+     dis: 8.42467 11.2608  11.312 11.3306 11.3497 
+query  8:    1242   50909  167415  151662  154955 
+     dis: 8.02228 10.4622 10.8913 11.0798 11.1213 
+note that the nearest neighbor is not at distance 0 due to quantization errors
+

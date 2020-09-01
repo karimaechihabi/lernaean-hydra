@@ -1,0 +1,220 @@
+\section{Preliminaries}
+%\section{Definitions and Terminology}
+\label{sec:problem}
+
+%Similarity search involves finding a set of objects in a database that are similar to a query according to some definition of distance.
+%A common abstraction of data series similarity search is to consider the query and candidate data series in the database to be points in a metric space and the sameness (or difference) is typically determined based on a distance function.
+%Our definitions and experimental framework apply to any distance function but for simplicity and clarity, we choose to use only Euclidean distance.
+
+Similarity search represents a common problem in various areas of computer science.
+However, in the particular case of data series, there exist several different flavors that have been studied in the literature, often times using overloaded and conflicting terms.
+%!!! COMMENTED OUT BY KOSTAS !!! As a result, when reading the literature, it is not always clear what problem exactly each approach has been designed to solve, and on which situations it is applicable.
+This has contributed to an overall confusion, which hinders further advances in the field.
+
+In this section, we discuss the different flavors of data series similarity search, and provide corresponding definitions, which set a common language for the problems in this area.
+
+%\subsection{Definitions and Terminology}
+\noindent{\bf On Sequences.}
+%\begin{defn} \label{def:dataseq}
+A \textit{\textbf{data series}} $S(p_1,p_2,...,p_n)$ is an ordered sequence of points, $p_i$, $1 \leq i \leq n$.
+The number of points, $|S|=n$, is the length of the series.
+We denote the $i$-th point in $S$ by $S[i]$; then $S[i:j]$ denotes the \textit{\textbf{subsequence}} $S(p_i,p_{i+1},...,p_{j-1},p_j)$, where $1 \leq i \leq j \leq n$.
+We use $\mathbb{S}$ to represent all the series in a collection (dataset).
+%\end{defn}
+
+In the above definition, if each point in the series represents the value of a single variable (e.g., temperature) then each point is a scalar, and we talk about a \textit{\textbf{univariate series}}. Otherwise, if each point represents the values of multiple variables (e.g., temperature, humidity, pressure, etc.) then each point is a vector, and we talk about a \textit{\textbf{multivariate series}}.
+The values of a data series may also encode measurement errors, or imprecisions, in which case we talk about uncertain data series~\cite{DBLP:conf/ssdbm/AssfalgKKR09,DBLP:conf/edbt/YehWYC09,DBLP:conf/kdd/SarangiM10,DBLP:journals/pvldb/DallachiesaNMP12,journal/vldb/Dallachiesa2014}.
+
+Especially in the context of similarity search, a data series of length $n$ can also be represented as a single point in an $n$-dimensional space. %$\mathbb{R}^n$.
+Then the values and length of $S$ are referred to as \emph{dimensions} and \emph{dimensionality}, respectively.
+
+%We now define the subsequence of a data series.
+%\begin{defn} \label{def:datasub}
+%We say that $S(c_i,c_{i+1},...,c_{i+s-1})$ is a \textit{\textbf{subsequence}} of $S(c_1,c_2,...,c_n)$, if $1 \leq i \leq n+1-s$ and $\forall \ i \leq j \leq i+s-1$, $c_{j} \in S$.
+%\end{defn}
+%
+%In this case, we simply denote $S_{sub}(c_i,c_{i+1},...,c_{i+s-1})$ by $S_{(i,s)}$, and it holds that $|S_{(i,s)}| = s$.
+
+%In each of these categories, the most common queries are \textit{\textbf{range queries}} and \textit{\textbf{k-NN queries}}.
+%Besides, each category can be answered using \textit{\textbf{ exact, approximate, $\epsilon$-approximate, or probabilistic methods}}.
+
+%\begin{defn} \label{def:datasum}
+%Given a data series $DS$ of length $n$, a \textit{\textbf{data series summarization}} $DSS$ is an ordered sequence of $l$ real values obtained after applying a dimensionality reduction technique to $DS$ such that $|DSS| = l \ and \ 1 \leq l \leq n$. $DS$ can then be represented as a point in a real $l$-dimensional metric space $\mathbb{R}^l$.
+%\end{defn}
+
+\noindent{\bf On Distance Measures.}
+A data series \textit{\textbf{distance}} is a function that measures the (dis)similarity of two data series.
+The distance between a query series, $S_Q$, and a candidate series, $S_C$, is denoted by $d(S_Q,S_C)$.
+%\begin{defn} \label{def:eucldist}
+%The \textit{\textbf{Euclidean distance}} between two data series $DS_Q \ and \ DS_C$ of length $n$, represented by two points $Q(q_1,q_2,...,q_n)$  and $C(c_1,c_2,...,c_n)$ in $\mathbb{R}^d$, is defined as follows \cite{conf/sdm/Batista2011}:
+%	\[ d_{L_2}(DS_Q,DS_C) \equiv d_{L_2}(Q,C) \equiv \sqrt[2]{\sum_{i=1}^{n} \ (q_i-c_i)^2} \]
+%\end{defn}
+
+Even though several distance measures have been proposed in the literature~\cite{berndt1994using,das1997finding,DBLP:conf/edbt/AssfalgKKKPR06,DBLP:conf/icde/ChenNOT07,journal/dmkd/Wang2013,DBLP:conf/ssdbm/MirylenkaDP17}, the Euclidean distance is the one that is the most widely used, as well as one of the most effective for large data series collections~\cite{conf/vldb/Ding2008}.
+We note that an additional advantage of Euclidean distance is that in the case of Z-normalized series (mean=$0$, stddev=$1$), which are very often used in practice~\cite{conf/kdd/Zoumpatianos2015}, it can be exploited to compute Pearson correlation~\cite{conf/icde/Rafiei99}.
+
+In addition to the distance used to compare data series in the high-dimensional space, some similarity search methods also rely on \textit{lower-bounding}~\cite{journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016,journal/edbt/Schafer2012,conf/vldb/Wang2013,dpisax,ulisse,conf/vldb/Ciaccia1997,conf/kdd/Karras2011} and \textit{upper-bounding} distances~\cite{conf/vldb/Wang2013,conf/kdd/Karras2011}. 
+A \textit{\textbf{lower-bounding distance}} is a distance defined in the reduced dimensional space satisfying the lower-bounding property, i.e., the distance between two series in the reduced space is guaranteed to be smaller than or equal to the distance between the series in the original space~\cite{conf/sigmod/Faloutsos1994}. 
+Inversely, an \textit{\textbf{upper-bounding distance}} ensures that distances in the reduced space are larger than the distances in the original space~\cite{conf/vldb/Wang2013,conf/kdd/Karras2011}.
+
+\noindent{\bf On Similarity Search Queries.}
+We now define the different forms of data series similarity search queries.
+We assume a data series collection, $\mathbb{S}$, a query series, $S_Q$, and a distance function $d(\cdot,\cdot)$.
+
+%A \textit{\textbf{k-Nearest-Neighbor (k-NN) query}} $q$, finds the set $\mathbb{S} = \{C_1,..,C_k\}$ of the $k$ nearest points to the query point $Q$ in a search space $D \subseteq \mathbb{R}^d$.
+A \textit{\textbf{k-Nearest-Neighbor (k-NN) query}} identifies the $k$ series in the collection with the smallest distances to the query series.
+
+\begin{defn} \label{def:knnquery}
+Given an integer $k$, a \textit{\textbf{k-NN query}} retrieves the set of series $\mathbb{A} = \{ \{S_{C_1},...,S_{C_k}\} \subseteq \mathbb{S} | \forall \ S_C \in \mathbb{A} \ and \ \forall \ S_{C'} \notin \mathbb{A}, \ d(S_Q,S_C) \leq d(S_Q,S_{C'})\}$.
+\end{defn}
+
+%An \textit{\textbf{r-range query}} produces as an answer the set of series, $\mathbb{A}$, such that the distance between the query series, $S_Q$, and any candidate series, $S_C\in \mathbb{S}$, is at most $r$.
+An \textit{\textbf{r-range query}} identifies all the series in the collection within range $r$ form the query series.
+
+\begin{defn} \label{def:rquery}
+Given a distance $r$, an \textit{\textbf{r-range query}} retrieves the set of series $\mathbb{A} = \{S_C \in \mathbb{S} | d(S_Q,S_C) \leq r\}$.
+\end{defn}
+
+%\textit{S} is also known in high-dimensional geometry as $B^n_r(q)$, that is the closed \textit{n}-ball of query point \textit{Q} with radius $r$.
+%It is a closed ball because the range query condition includes points whose distance from \textit{Q} is equal to $r$.
+%In two-dimensional space, $B^2_r(Q)$ is the closed disk with center \textit{q} and radius $r$.
+%(A similar definition has appeared in~\cite{conf/icde/Ciaccia2000}).
+
+%\begin{defn} \label{def:distset}
+%Given a point $C'$, and the set $\mathbb{S} \subseteq D \subseteq %\mathbb{R}^d$ returned by a similarity query $q$, the distance of $C_i$ to %$\mathbb{S}$ is defined as follows:
+%	 \[d(C',\mathbb{S}) = r \ \textit{if  q is an $r$-range query} \]
+%	 \[d(C',\mathbb{S}) = d(C',C) \ \textit{if q is a $k$-NN query}, \]
+%\[\textit{where $C \in \mathbb{S}$ is the corresponding nearest neighbor}\]
+%\end{defn}
+
+%Definitions~\ref{def:wholematch} and~\ref{def:submatch} are based on the definitions that appeared in \cite{conf/sigmod/Faloutsos1994}.
+%\begin{defn} \label{def:wholematch}
+%Given a search space $D \subseteq \mathbb{R}^d$ of candidate data series, and a query data series $DS_Q$, a \textit{\textbf{whole matching query}} finds the data series in $D$ that match $DS_Q$.It is important to note that the query and candidate data series must have the same length.
+%\end{defn}
+%
+%\begin{defn} \label{def:submatch}
+%Given a search space $D \subseteq \mathbb{R}^d$ of candidate data series of arbitrary length, and a query data series $DS_Q$, a \textit{\textbf{subsequence matching query}} finds the set $\mathbb{S}$ of all data series $C$ in $D$ that contain subsequences $C_{sub}$ matching $Q$.
+%Typically $|Q| \ll |C|$, that is the length of $Q$ is typically much smaller than that of the candidate data series $C$.
+%\end{defn}
+We additionally identify the following two categories of k-NN and range queries.
+%~\cite{conf/sigmod/Faloutsos1994}.
+In \textit{\textbf{whole matching (WM)}} queries, we compute the similarity between an entire query series and an entire candidate series.
+All the series involved in the similarity search have to have the same length.
+In \textit{\textbf{subsequence matching (SM)}} queries, we compute the similarity between an entire query series and all subsequences of a candidate series.
+In this case, candidate series can have different lengths, but should be longer than the query series. 
+
+\begin{defn} \label{def:wholematch}
+	A \textit{\textbf{whole matching query}} finds the candidate data series $S \in \mathbb{S}$ that matches $S_Q$, where $|S|=|S_Q|$. 
+\end{defn}
+
+\begin{defn} \label{def:submatch}
+	A \textit{\textbf{subsequence matching query}} finds the subsequence $S[i:j]$ of a candidate data series $S \in \mathbb{S}$ that matches $S_Q$, where $|S[i:j]| = |S_Q| < |S|$.
+\end{defn}
+
+%Definitions~\ref{def:wholematch} and~\ref{def:submatch} are based on the definitions that appeared in~\cite{conf/sigmod/Faloutsos1994}.
+
+
+% ; though, all the candidate series should be at least as long as the query series.
+
+In practice, we encounter situations that cover the entire spectrum: WM queries on large collections of short series~\cite{SENTINEL-2,url:sds}, SM queries on large collections of short series~\cite{url:adhd}, and SM queries on collections of long series~\cite{url/data/seismic}.
+
+Note that a SM query can be converted to WM: we create a new collection that comprises all the overlapping subsequences (each long series in the candidate set is chopped into overlapping subsequences of the length of the query), and perform a WM query against these subsequences~\cite{ulisse,journal/vldb/linardi19}.
+
+\noindent{\bf On Similarity Search Methods.}
+When a similarity search algorithm (k-NN or range) produces answers that are (by definition) always correct and complete: we call such an algorithm \textit{\textbf{exact}}.
+Nevertheless, we can also develop algorithms without such strong guarantees: we call such algorithms \textit{\textbf{approximate}}.
+As we discuss below, there exist different flavors of approximate similarity search algorithms.
+
+%\begin{defn} \label{def:examatch}
+%Given two points $C$ and $Q$ in $\mathbb{R}^d$, representing two data series $DS_C$ and $DS_Q$, $DS_C$ is an \textit{\textbf{exact match}} for $DS_Q$ if $C$ belongs to the set $\mathbb{S}$ returned by a similarity query $q$ per Definitions~\ref{def:rquery} and~\ref{def:knnquery}.
+%\end{defn}
+
+An {\textit{\bf$\bm{\epsilon}$-approximate}} algorithm guarantees that its distance results have a relative error no more than $\epsilon$, i.e., the approximate distance is at most $(1+\epsilon)$ times the exact one. 
+% distance.
+% (for some small $\epsilon$).
+
+\begin{defn} \label{def:epsmatch}
+Given a query $S_Q$, and $\epsilon \geq 0$, an \textit{\textbf{$\bm{\epsilon}$-approximate}} algorithm guarantees that all results, $S_C$, are at a distance $d(S_Q,S_C) \leq (1+\epsilon)d(S_Q,[\text{k-th NN of }S_Q])$ in the case of a $k$-NN query, and distance $d(S_Q,S_C) \leq (1+\epsilon)r$ in the case of an r-range query.
+%, $S_C \in \mathbb{S}$.
+\end{defn}
+%\begin{defn} \label{def:epsmatch}
+%Given two points $C_\epsilon$ and $Q$ in $\mathbb{R}d$, representing two data series $DS_{C_\epsilon}$ and $DS_Q$, and a similarity query $q$, $DS_{C_\epsilon}$ is an \textit{\textbf{$\epsilon$-approximate match}} for $DS_Q$ if $d(Q,C_\epsilon)$ is guaranteed to be within an error $\epsilon$ from $d(\mathbb{S},C_\epsilon)$. The value of $\epsilon$ is a parameter known in advance.
+%	 \[d(Q,C_{\epsilon}) \leq (1+\epsilon)d(\mathbb{S},C_{\epsilon})\]
+%The distance $d(\mathbb{S},C_\epsilon)$ is defined the same way as in Definition~\ref{def:appmatch} by substituting ${C_x}$ with ${C_\epsilon}$.
+%\end{defn}
+
+A {\bf $\bm{\delta}$-$\bm{\epsilon}$-approximate} algorithm, guarantees that its distance results will have a relative error no more than $\epsilon$ (i.e., the approximate distance is at most $(1+\epsilon)$ times the exact distance), with a probability of at least $\delta$.
+	
+	% \begin{defn} \label{def:epsmatch}
+	% 	Given a query $S_Q$, and $0 \leq \delta \leq 1$, a \textit{\textbf{$\delta$-approximate}} algorithm guarantees that all results, $S_C$, are exact with probability at least $\delta$.
+	% \end{defn}
+
+\begin{defn} \label{def:probmatch}
+Given a query $S_Q$, $\epsilon \geq 0$, and $\delta \in [0,1]$, a \textit{\textbf{$\bm{\delta}$-$\bm{\epsilon}$-approximate}} algorithm produces results, $S_C$, for which $Pr[d(S_Q,S_C)$ $\leq (1+\epsilon)d(S_Q,[\text{k-th NN of }S_Q])] \geq \delta$ in the case of a $k$-NN query, and $Pr[d(S_Q,S_C) \leq (1+\epsilon)r] \geq \delta$) in the case of an r-range query.
+\end{defn}
+
+%\begin{defn} \label{def:probmatch}
+%Given two points $C^{\delta}_\epsilon$ and $Q$ in $\mathbb{R}d$, representing two data series $DS_{C^\delta_\epsilon}$ and $DS_Q$, and a similarity query $q$, $DS_{C^\delta_\epsilon}$ is
+%a \textit{\textbf{$\delta$-$\epsilon$-approximate match}}, in short a \textit{\textbf{probabilistic match}}, for $DS_Q$ if $d(Q,C^\delta_\epsilon)$ is guaranteed, with probability $\delta$, to be within an error $\epsilon$ from $d(\mathbb{S},C^{\delta}_\epsilon)$. The values of $\epsilon$ and $\delta$ are parameters known in advance.
+%	 \[\Pr\left[d(Q,C^\delta_\epsilon) \leq (1+\epsilon)d(\mathbb{S},C^\delta_\epsilon )\right] \geq \delta\]
+%The distance $d(\mathbb{S},C^\delta_\epsilon )$ is defined the same way as in Definition~\ref{def:appmatch} by substituting ${C_x}$ with ${C^\delta_\epsilon}$.
+%\end{defn}
+
+An \textit{\textbf{ng-approximate}} (no-guarantees approximate) algorithm does not provide any guarantees (deterministic, or probabilistic) on the error bounds of its distance results.
+
+\begin{defn} \label{def:appmatch}
+Given a query $S_Q$, an \textit{\textbf{ng-approximate}} algorithm produces results, $S_C$, that are at a distance $d(S_Q,S_C) \leq (1+\theta)d(S_Q,[\text{k-th NN of }S_Q])$ in the case of a $k$-NN query, and distance $d(S_Q,S_C) \leq (1+\theta)r$ in the case of an r-range query, for an arbitrary value $\theta \in \mathbb{R}_{>0}$.
+%, $S_C \in \mathbb{S}$.
+\end{defn}
+%\begin{defn} \label{def:appmatch}
+%Given two points $C_x$ and $Q$ in $\mathbb{R}d$, representing two data series $DS_{C_x}$ and $DS_Q$, and a similarity query $q$, $DS_{C_x}$ is an \textit{\textbf{approximate match}} for $DS_Q$ if $d(Q,C_x)$ is within an error $x$ from $d(\mathbb{S},C_x)$, where $\mathbb{S}$ is the set of exact matches returned by $q$.
+%	 \[d(Q,C_x) \leq (1+x) d(\mathbb{S},C_x)\]
+%The distance $d(\mathbb{S},C_x)$ depends on the type of the similarity query $q$.
+%\[d(\mathbb{S},C_x) = r \ \textit{if q is an $r$-range query} \]
+%	 	 \[d(\mathbb{S},C_x) = d(C_x,C) \ \textit{if q is a $k$-NN query}, \]
+%	 	 where $C \in \mathbb{S}$ is the actual nearest neighbor.
+%	 	 For instance, if $C_x$ is the approximate $i$th nearest neighbor then $C$ is the actual $i$th nearest neighbor. Moreover,
+%the value of $x$ is not known in advance.
+%%	 \[d(Q,C_x) \leq (x+ d_{ref}) \ if \ d_{ref}  = 0\]
+% %{\color{red} For the special case when $d(Q, C_{approx}) - d(Q,C) =0$, the effective error is defined as:
+% %	 \[d(Q,C_x) \leq d(Q,C) + x\]
+% %	 }
+%\end{defn}
+
+In the data series literature, \textit{ng-approximate} algorithms have been referred to as \emph{approximate}, or \emph{heuristic} search~\cite{journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016,journal/edbt/Schafer2012,conf/vldb/Wang2013,dpisax,ulisse}.
+Unless otherwise specified, for the rest of this paper we will refer to \textit{ng-approximate} algorithms simply as approximate. Approximate matching in the data series literature
+%%was first introduced in \cite{conf/kdd/Shieh2008} and
+consists of pruning the search space, by traversing one path of an index structure representing the data, visiting at most one leaf, to get a baseline best-so-far (bsf) match.
+{\color{blue} In the multidimensional literature, ng-approximate similarity search is sometimes abbreviated as \textit{ANN}~\cite{journal/tpami/jegou2011}, which stands for Approximate Nearest Neighbor, $\epsilon$-approximate 1-NN search as \textit{c-ANN}~\cite{conf/vldb/sun14}, and $\epsilon$-approximate k-NN search as \textit{c-k-ANN}~\cite{journal/pvldb/huang2015}, where $c$ stands for the approximation error and corresponds to $1+\epsilon$.} {\color{blue} The terminology we propose is expressive enough to cover the different variations of approximate k-NN and range search queries.}
+
+
+%In the case of a $k$-NN search, a $\delta$-$\epsilon$-approximate match for query $Q$ corresponds to the point $C^\delta_\epsilon$ whose distance from the actual $k$th nearest neighbor of Q is guaranteed, with probability $\delta$, to be within a relative error $\epsilon$.
+%\begin{defn} \label{def:match}
+%A data series $C$ is \textit{\textbf{match}} for a query data series $Q$ if it is either an exact, approximate, $\epsilon$-approximate or probabilistic match.
+%\end{defn}
+
+%\begin{defn} \label{def:effepsilon}
+%Given a query data series $S_Q$, an exact match $S_C$ and an approximate, $\epsilon$-approximate or probabilistic match $S_{C_{approx}}$, the \textit{\textbf{effective error, $\epsilon_{\text{eff}}$}} of $S_{C_{approx}}$ is:
+%\[\epsilon_{\text{eff}} = \frac {d(S_Q,S_{C_{approx}}) - d(S_Q, S_C)}  {d(S_Q,S_C)}  \]
+%%{\color{red} For the special case when $d(Q, C_{approx}) - d(Q,C) =0$, the effective error is defined as: \[\epsilon_eff = d(Q, C_{approx}) - d(Q,C) \]}
+%\end{defn}
+%It is noteworthy to point out that the $\epsilon$ in Definition~\ref{def:epsmatch} constitutes an upper bound on the actual approximation error $\epsilon_{eff}$ in Definition~\ref{def:effepsilon}.
+%Without loss of generality, we do not consider the case where $d(Q,C) = 0$. This can happen in range queries with radius zero, or kNN queries where the nearest neighbor is the query point itself. In these cases, the definition for effective error can be modified to use the absolute error instead of the relative error.
+%Also, we do not consider the absolute value since the difference between the approximate and actual distances is always positive.
+
+Observe that when $\delta = 1$, a $\delta$-$\epsilon$-approximate method becomes $\epsilon$-approximate, and when $\epsilon=0$, an $\epsilon$-approximate method becomes exact~\cite{conf/icde/Ciaccia2000}.
+It it also possible that the same approach implements both approximate and exact algorithms~\cite{conf/kdd/shieh1998,conf/vldb/Wang2013,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016,journal/edbt/Schafer2012}. 
+%Definitions~\ref{def:epsmatch}, \ref{def:probmatch} and~\ref{def:effepsilon} are general and apply to $r$-range and $k$-NN queries.
+%They generalize the definitions in~\cite{conf/icde/Ciaccia2000} and \cite{journal/acm/Arya1998} which are specific to $k$-NN queries.
+Methods that provide exact answers with probabilistic guarantees are considered $\delta$-0-approximate. 
+These methods guarantee distance results to be exact with probability at least $\delta$ ($0 \leq \delta \leq 1$ and $\epsilon$ = 0).
+(We note that in the case of $k$-NN queries, Def.~\ref{def:epsmatch} corresponds to the \emph{approximately correct NN}~\cite{conf/icde/Ciaccia2000} and \emph{$(1+\epsilon)$-approximate NN}~\cite{journal/acm/Arya1998}, while  Def.~\ref{def:probmatch} corresponds to the \emph{probably approximately correct NN}~\cite{conf/icde/Ciaccia2000}.)
+
+{\color{blue}
+\noindent{\bf Scope.}
+%\subsection{Scope}
+In this study, we focus on \emph{univariate} series with \emph{no uncertainty}, where each point is drawn from the domain of real values, $\mathbb{R}$, and we evaluate \emph{approximate} methods for \emph{whole matching} in datasets containing a \emph{very large number of series}, using \emph{$k$-NN queries} and the \emph{Euclidean distance}. This scenario is key to numerous analysis algorithms, and is very relevant in practice~\cite{journal/pattrecog/Warren2005,conf/kdd/Zoumpatianos2015,conf/sofsem/Palpanas2016}, in fields as varied as neuroscience~\cite{golay1998new}, seismology~\cite{kakizawa1998discrimination}, retail data~\cite{DBLP:conf/kdd/KumarPW02}, and energy~\cite{kovsmelj1990cross}. We point out that some of the lessons learned from this experimental evaluation can hold for other distances and query workloads.
+%Note also that some of the insights gained by this study could carry over to other settings, such as, $r$-range queries, dynamic time warping distance, or approximate search.
+}
+
+

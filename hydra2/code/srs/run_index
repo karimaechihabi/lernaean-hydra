@@ -1,0 +1,7 @@
+
+#./srs --mode 0  --timeseries-size 256 --index-path index_100GB/ --projected-dim 16 --dataset-size 100000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin > 100GB_index.out
+#./srs --mode 0  --timeseries-size 256 --index-path index_250GB/ --projected-dim 16 --dataset-size 250000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin > 250GB_index.out
+
+#./srs --mode 0  --timeseries-size 256 --index-path index_10GB/ --projected-dim 16 --dataset-size 10000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin > 10GB_index.out
+
+./srs --mode 0  --timeseries-size 256 --index-path index_100GB_m10/ --projected-dim 10 --dataset-size 100000000 --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin > 100GB_m10_index.out

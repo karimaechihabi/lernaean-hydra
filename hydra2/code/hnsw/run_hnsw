@@ -1,0 +1,14 @@
+#./hnsw --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin --dataset-size 25000000 --index-path /home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/out_25GB_M4_ef500/ --efConstruction 500 --M 4 --timeseries-size 256 --mode 0 --buffer-size 5000000 > index_25GB_M4_ef500.log
+
+./hnsw --dataset $DATASETS/data_size1B_seed1184_len256_znorm.bin  --dataset-size 25000000 --index-path /home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/out_25GB_M4_ef500/ --timeseries-size 256 --k 100 --mode 1 --queries $DATASETS/queries_size100K_seed14784_len256_znorm.bin --queries-size 100 > queries_25GB_M4_ef500.log
+
+
+#./hnsw --dataset /data/datasets/synthetic/data_size1B_seed1184_len256_znorm.bin --dataset-size 250000000 --index-path /home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/out_250GB_M4_ef500/ --efConstruction 500 --M 4 --timeseries-size 256 --mode 0  --buffer-size 5000000  > index_250GB_M4_ef500.log
+#./hnsw --dataset /data/datasets/synthetic/data_size1B_seed1184_len256_znorm.bin --dataset-size 250000000 --index-path /home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/out_250GB_M4_ef500/ --timeseries-size 256 --k 100 --mode 1  --queries /data/datasets/synthetic/queries_size100_seed14784_len256_znorm.bin --queries-size 100 > queries_250GB_M4_ef500.log
+
+#./hnsw --dataset /data/datasets/synthetic/data_size1B_seed1184_len256_znorm.bin --dataset-size 250000000 --index-path /home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/out_250GB_M4_ef40/ --efConstruction 40 --M 4 --timeseries-size 256 --mode 0  --buffer-size 5000000  > index_250GB_M4_ef40.log
+#./hnsw --dataset /data/datasets/synthetic/data_size1B_seed1184_len256_znorm.bin --dataset-size 250000000 --index-path /home/karimae/projects/dsseval_full_compact_journal/code/hnswlib-proj/out_250GB_M4_ef40/ --timeseries-size 256 --k 100 --mode 1  --queries /data/datasets/synthetic/queries_size100_seed14784_len256_znorm.bin --queries-size 100 > queries_250GB_M4_ef40.log
+
+
+
+

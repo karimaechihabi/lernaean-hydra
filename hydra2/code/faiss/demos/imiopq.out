@@ -1,0 +1,30 @@
+[0.003 s] Generating 113760 vectors in 128D for training
+[0.109 s] Preparing index "OPQ16_64,IMI2x8,PQ8+16" d=128
+[0.110 s] Training on 113760 vectors
+[432.062 s] storing the pre-trained index to index/index_trained.faissindex
+[432.063 s] Loading database
+[432.149 s] Indexing database, size 100000*128
+[434.534 s] storing the populated index to index/index_populated.faissindex
+[434.545 s] Searching the 5 nearest neighbors of 9 vectors in the index
+Query 0.693612 
+[434.545 s] Query results (vector ids, then distances):
+query  0:      34   33471   18019      -1      -1 
+     dis: 0.117996 8.23981 8.39508 3.40282e+38 3.40282e+38 
+query  1:      35      -1      -1      -1      -1 
+     dis: 0.163889 3.40282e+38 3.40282e+38 3.40282e+38 3.40282e+38 
+query  2:      36      -1      -1      -1      -1 
+     dis: 0.124094 3.40282e+38 3.40282e+38 3.40282e+38 3.40282e+38 
+query  3:      37    2442   44727   84922   63984 
+     dis: 0.160957 7.70015 7.92928 8.14546 8.36518 
+query  4:      38      -1      -1      -1      -1 
+     dis: 0.169165 3.40282e+38 3.40282e+38 3.40282e+38 3.40282e+38 
+query  5:      39   89170     322      -1      -1 
+     dis: 0.108337 8.41181 9.83143 3.40282e+38 3.40282e+38 
+query  6:      40   96150   22480      -1      -1 
+     dis: 0.123996 7.37777 8.31071 3.40282e+38 3.40282e+38 
+query  7:      41   73779   12761   27411      -1 
+     dis: 0.171017 9.12487 9.39224 10.5242 3.40282e+38 
+query  8:      42   26124      -1      -1      -1 
+     dis: 0.109771 8.72186 3.40282e+38 3.40282e+38 3.40282e+38 
+note that the nearest neighbor is not at distance 0 due to quantization errors
+

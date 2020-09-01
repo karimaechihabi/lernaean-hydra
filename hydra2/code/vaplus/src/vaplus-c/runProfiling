@@ -1,0 +1,4 @@
+run --dataset /home/karimae/data/synthetic/data_size1B_seed1184_len256_znorm.bin --dataset-size 1000000 --buffer-size 61440 --leaf-size 1000000 --index-path out_1M/ --ascii-input 0 --mode 0 --timeseries-size 256
+run --dataset /home/karimae/data/synthetic/data_size1B_seed1184_len256_znorm.bin --queries /home/karimae/data/synthetic/queries_size100K_seed14784_len256_znorm.bin --queries-size 100 --dataset-size 1000000 --buffer-size 61440 --index-path /home/karimae/projects/DSSeval_full_compact/code/vaplus-proj/src/vaplus-c/out_1M/ --mode 1 --timeseries-size 256
+
+

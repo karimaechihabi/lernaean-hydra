@@ -1,0 +1,197 @@
+\documentclass{vldb}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{algorithm}
+\PassOptionsToPackage{noend}{algpseudocode}
+\usepackage{algpseudocode}
+%\pagenumbering{arabic}
+\pagenumbering{gobble}
+%\definecolor{mygray}{rgb}{0.81, 0.81, 0.77}
+\usepackage[labelfont=bf,textfont=bf]{caption}
+\usepackage[labelfont=bf,textfont=bf,singlelinecheck=off,justification=raggedright]{subcaption}
+\newcommand{\setHeight}{2cm}
+\usepackage[normalem]{ulem}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{url}
+\usepackage{balance}
+\usepackage{color}
+\usepackage[table]{xcolor}
+\usepackage{hhline}
+\usepackage{paralist}
+\usepackage{amsmath}
+\let\proof\relax  
+\let\endproof\relax
+\usepackage{amsthm}
+\usepackage{bm}
+\usepackage[normalem]{ulem} 
+\newtheorem{defn}{Definition}
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+
+
+\graphicspath{../experiments/plots/paper/}
+
+
+%\definecolor{myred}{RGB}{112, 31, 40}
+%\definecolor{myblue}{RGB}{39, 70, 89}
+%\definecolor{mygreen}{RGB}{104, 196, 37}
+\definecolor{myred}{RGB}{189, 52, 67}
+\definecolor{mygreen}{RGB}{19, 136, 8}
+\definecolor{myblue}{RGB}{16, 52, 166}
+
+\sloppy
+% Define the switch for the different paper versions
+% The switch Journal defines the journal version
+% The switch Future defines the full draft with future work
+
+\newif\ifJournal
+\newif\ifFuture
+\newif\ifGrey
+\newif\ifColor
+
+\Greytrue
+%\Colortrue
+
+%To activate the journal version, uncomment the line below
+%\Journaltrue
+
+%To activate the Future work version, uncomment the line below
+%\Futuretrue
+
+%To activate the Full draft  uncomment both switches
+
+% By default the conference version is activated since
+% switches are set to False by default.
+\vldbTitle{Return of the Lernaean Hydra: Experimental Evaluation of Data Series Approximate Similarity Search}
+\vldbAuthors{Karima Echihabi, Kostas Zoumpatianos, Themis Palpanas, and Houda Benbrahim}
+\vldbDOI{https://doi.org/10.14778/3368289.3368303}
+\vldbVolume{13}
+\vldbNumber{3}
+\vldbYear{2019}
+
+
+\begin{document}
+	%\title{\bf\Large Taming the Lernaean Hydra of Data Series Similarity Search:\\ An Experimental Evaluation of the State of the Art}
+	\title{Return of the Lernaean Hydra: Experimental Evaluation of\\ Data Series Approximate Similarity Search}		%{\Large\bf[Experiments and Analysis Paper]}
+	
+	
+	
+	\numberofauthors{4}
+	
+	\author{
+		% You can go ahead and credit any number of authors here,
+		% e.g. one 'row of three' or two rows (consisting of one row of three
+		% and a second row of one, two or three).
+		%
+		% The command \alignauthor (no curly braces needed) should
+		% precede each author name, affiliation/snail-mail address and
+		% e-mail address. Additionally, tag each line of
+		% affiliation/address with \affaddr, and tag the
+		% e-mail address with \email.
+		%
+		% 1st. author
+		\alignauthor
+%		Karima Echihabi \\
+		\affaddr{
+			Karima Echihabi\\
+			IRDA, Rabat IT Center, \\
+			ENSIAS, Mohammed V Univ.}
+		%\email{{karima.echihabi@ifnilink.com}}\\
+		\affaddr{{karima.echihabi@gmail.com}}\\
+		% 2nd. author
+		\alignauthor 
+%		Kostas Zoumpatianos \\
+		\affaddr{
+			Kostas Zoumpatianos\\
+			Harvard University} % MA, USA}
+		\affaddr{{kostas@seas.harvard.edu}}
+		% 3rd. author
+		\alignauthor
+%		Themis Palpanas \\
+		\affaddr{
+			Themis Palpanas\\
+			Universit{\'e} de Paris}\\ % Paris, France}\\
+		\affaddr{{themis@mi.parisdescartes.fr}}\\
+		\and
+		\alignauthor 
+%		Houda Benbrahim \\
+		\affaddr{
+			Houda Benbrahim\\
+			IRDA, Rabat IT Center, \\
+			ENSIAS, Mohammed V Univ.} 
+		\affaddr{{houda.benbrahim@um5.ac.ma}}
+		% use '\and' if you need 'another row' of author names
+	}
+	% There's nothing stopping you putting the seventh, eighth, etc.
+	% author on the opening page (as the 'third row') but we ask,
+	% for aesthetic reasons that you place these 'additional authors'
+	% in the \additional authors block, viz.
+	% Just remember to make sure that the TOTAL number of authors
+	% is the number that will appear on the first page PLUS the
+	% number that will appear in the \additionalauthors section.
+	
+ \maketitle
+	
+\begin{abstract}
+Data series are a special type of multidimensional data present in numerous domains, where similarity search is a key operation that
+%A key operation in data series analysis pipelines is similarity search, which 
+has been extensively studied in the data series literature. %, leading to the development of efficient exact indexing methods. 
+In parallel, the multidimensional community %at large 
+has studied approximate similarity search techniques. 
+%In this paper, we 
+We propose a %comprehensive 
+taxonomy of similarity search techniques that reconciles the terminology used in these two domains, we describe modifications to data series indexing techniques enabling them to answer approximate similarity queries with quality guarantees, and we conduct a thorough experimental evaluation to compare approximate similarity search techniques under a unified framework, on synthetic and real datasets in memory and on disk. 
+Although data series differ from generic multidimensional vectors (series usually exhibit correlation between neighboring values), our results show that data series techniques answer approximate %similarity 
+queries with strong guarantees and an excellent empirical performance, on data series and vectors alike. 
+These techniques outperform the state-of-the-art approximate techniques for vectors when operating on disk, and remain competitive in memory. 
+\end{abstract}
+	
+	
+\input{introduction}
+\input{problem}
+\input{approaches}
+\input{experiments}
+\input{discussion}
+\input{conclusions}
+	
+	
+\vspace*{0.3cm}
+\noindent{\bf Acknowledgments.} Work partially supported by program Investir l'Avenir and Univ. of Paris IDEX Emergence en Recherche ANR-18-IDEX-0001, EU project NESTOR (MSCA {\#}748945), and FMJH Program PGMO in conjunction with EDF-THALES.		
+%We sincerely thank all authors for generously sharing their code, and M. Linardi for his implementation of MASS~\cite{journal/dmkd/Yeh2017}. Work partially supported by EU project NESTOR (Marie Curie #748945).
+	
+	
+	\balance
+	
+	% The following two commands are all you need in the
+	% initial runs of your .tex file to
+	% produce the bibliography for the citations in your paper.
+	\bibliographystyle{abbrv}
+	%\vspace*{-5pt}
+	\def\thebibliography#1{
+		\section*{References}
+		\normalsize                  % smaller; put \normalsize after bib --dt
+		%\footnotesize
+		%\small
+		%\scriptsize
+		\list
+		{[\arabic{enumi}]}
+		{\settowidth\labelwidth{[#1]}
+			\leftmargin\labelwidth
+			\parsep 1pt                % tighter --dt
+			\itemsep 0.6pt               % tighter --dt
+			\advance\leftmargin\labelsep
+			\usecounter{enumi}
+		}
+		\def\newblock{\hskip .11em plus .33em minus .07em}
+		\sloppy\clubpenalty10000\widowpenalty10000
+		\sfcode`\.=1000\relax
+	}
+	\bibliography{ref}  % vldb_sample.bib is the name of the Bibliography in this case
+	% You must have a proper ".bib" file
+	%  and remember to run:
+	% latex bibtex latex latex
+	% to resolve all references
+	
+\end{document}

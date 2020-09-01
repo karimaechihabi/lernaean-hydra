@@ -1,0 +1,31 @@
+-------
+ِCOMPILE
+------
+
+You can compile with make (you need the GNU scientific library)
+
+----
+RUN
+----
+Before running the generator do this to create random sets at each run 
+export GSL_RNG_SEED=$RANDOM
+
+./generator --size 1 --length 256 --z-normalize --filename "/home/karima/sdb1_mount/data/test.bin"
+
+--size is how many time series you want
+
+--length is the length of each time series
+
+--z-normalize is a binary flag that specifies that we want them z-normalized
+
+--filename is the name of the file to store the data in binary format
+
+the dataset should be named using the convention:
+data_fulldatasize_datasetname_dataserieslength (add _znorm if data is znormalized or _nznorm otherwise) 
+if the data is synthetic, the datasetname is the seed.
+
+The queries filename should be named following the same convention as the dataset,
+for instance queries_queriessize_queriesname_dataserieslength  (add _znorm if queries are znormalized or _nznorm otherwise) 
+if the queries are synthetic, the queriesname is the seed.
+
+

@@ -1,0 +1,90 @@
+\section{Introduction}
+\label{sec:introduction}
+%\noindent{\bf Data Series.}
+%\footnote{When the order is based on time, it is called a \emph{time series}. We note that the order can be defined by angle (e.g., in radial profiles), mass (e.g., in mass spectroscopy), position (e.g., in genome sequences), and others~\cite{conf/sofsem/Palpanas2016}. The terms \emph{data series}, \emph{time series} and \emph{sequence} are used interchangeably.}.
+\noindent{\bf Motivation.} 
+A data series is a sequence of ordered real values\footnote{The order attribute can be angle, mass, time, etc.~\cite{conf/sofsem/Palpanas2016}. When the order is time, the series is called a \emph{time series}. We use \emph{data series}, \emph{time series} and \emph{sequence} interchangeably.}. 
+Data series are ubiquitous, appearing in nearly every domain including science and engineering, medicine, business, finance and economics~\cite{KashinoSM99,Shasha99,humanbehaviorpatterns,volker,DBLP:conf/edbt/MirylenkaCPPM16,HuijseEPPZ14,percomJournal,windturbines,spikesorting,VALMOD,journal/jte/Williams2003,conf/compstats/Hebrail2000}. 
+The increasing presence of IoT technologies is making collections of data series grow to multiple terabytes~\cite{DBLP:journal/sigmod/Palpanas15}. 
+These data series collections need to be analyzed in order to extract knowledge and produce value~\cite{Palpanas2019}. 
+The process of retrieving similar data series (i.e., similarity search), forms the backbone of most analytical tasks, including outlier detection~\cite{journal/csur/Chandola2009,conf/icde/boniol20}, frequent pattern mining~\cite{conf/kdd/Mueen2012}, clustering~\cite{conf/kdd/Keogh1998,conf/sdm/Rodrigues2006,conf/icdm/Keogh2011,journal/pattrecog/Warren2005}, and classification~\cite{journal/jmlr/Chen2009}. 
+Thus, to render data analysis algorithms and pipelines scalable, we need to make similarity search more efficient. 
+
+%The similarity search algorithm for data series returns the set of candidate data series in a collection that is similar to a given query series. This algorithm is often reduced to the nearest neighbor problem where data series are represented as data points in multidimensional space and their (dis)similarity is evaluated using a distance function.
+%
+%Although a data series can be represented as a vector in high dimensional space, conventional vector-based approaches are not adapted for the following two reasons: (a) they cannot scale to thousands of dimensions; and (b) they do not leverage the correlation between dimensions typical for data series.
+%
+%Similarity search methods can either return exact or approximate answers. Exact methods are costly while approximate methods offer better efficiency at the expense of losing some accuracy. We call approximate methods that do not provide any guarantees on the results $ng$-approximate, and those that provide guarantees on the approximation error, $\delta$-$\epsilon$-approximate methods, where $\epsilon$ is the approximation error and $\delta$, the probability that $\epsilon$ will not be exceeded.
+
+%A plethora of similarity search methods have been published by the community including techniques designed for generic vectors~\cite{conf/stoc/indyk1998,conf/sigmod/Guttman1984,conf/icmd/Beckmann1990,conf/vldb/Ciaccia1997,conf/vldb/Weber1998,conf/cikm/Hakan2000,journal/tpami/jegou2011,conf/vldb/sun14,journal/pami/babenko15,journal/corr/malkov16}
+%%~\cite{conf/stoc/indyk1998,journal/cacm/bentley1975,conf/sigmod/Guttman1984,conf/icmd/Beckmann1990,conf/vldb/bertchold1996, conf/vldb/Ciaccia1997,conf/vldb/Weber1998,conf/cikm/Hakan2000,journal/tpami/jegou2011,journal/iccv/xia2013,conf/vldb/sun14,journal/pami/babenko15,journal/corr/malkov16}
+%and those specific to data series~\cite{conf/fodo/Agrawal1993,conf/icde/Rafiei99,conf/kdd/Karras2011,conf/kdd/Mueen2012,dpisax,ulisse,journal/vldb/linardi19,conf/bigdata/peng18,conf/kdd/ColeSZ05,conf/icdm/Camerra2010,journal/edbt/Schafer2012,conf/vldb/Wang2013,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016}.
+%%~\cite{conf/fodo/Agrawal1993,conf/kdd/shieh1998,conf/icde/Rafiei99,conf/kdd/Karras2011,conf/kdd/Mueen2012,code/Mueen2017,dpisax,ulisse,journal/vldb/linardi19,conf/bigdata/peng18,conf/icde/shatkay1996,conf/kdd/Keogh1997,conf/ssdm/Wang2000,conf/kdd/ColeSZ05,conf/icdm/Camerra2010,journal/edbt/Schafer2012,conf/vldb/Wang2013,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016}.
+
+%This work proposes a versatile index called SISS, which supports progressive query answering with probabilistic guarantees. We first describe related work, then present our proposed solution. We succinctly report the results of our extensive experimental evaluation of \emph{exact} methods~\cite{journal/pvldb/echihabi2018}, give a glimpse of some very interesting results from an ongoing experimental study focused on \emph{approximate} methods, and describe future work directions.
+%%We thus differ from other experimental studies which focused on the efficiency of exact search~\cite{journal/pvldb/echihabi2018}, the accuracy of dimensionality reduction techniques and similarity measures for classification tasks~\cite{journal/dmkd/Keogh2003,conf/vldb/Ding2008,DBLP:journals/datamine/BagnallLBLK17}, or in-memory data~\cite{journals/corr/li16,conf/sisap/martin17}. 
+
+\noindent{\bf Similarity Search.}
+A large number of data series similarity search methods has been studied, supporting exact search~\cite{conf/fodo/Agrawal1993,conf/kdd/shieh1998,conf/icde/Rafiei99,conf/kdd/Karras2011,conf/kdd/Mueen2012,code/Mueen2017}, approximate search~\cite{conf/icde/shatkay1996,conf/kdd/Keogh1997,conf/ssdm/Wang2000,conf/kdd/ColeSZ05,journal/vldb/Dallachiesa2014}, or both~\cite{conf/icdm/Camerra2010,journal/edbt/Schafer2012,conf/vldb/Wang2013,journal/kais/Camerra2014,journal/vldb/Zoumpatianos2016,dpisax,journal/pvldb/kondylakis18,ulisse,journal/vldb/linardi19,conf/bigdata/peng18,dpisaxjournal,coconutjournal,conf/icde/peng20}. 
+In parallel, the research community has also developed exact~\cite{journal/cacm/bentley1975,conf/sigmod/Guttman1984,conf/icmd/Beckmann1990,conf/vldb/bertchold1996, conf/vldb/Ciaccia1997,conf/vldb/Weber1998,conf/cikm/Hakan2000} and approximate~\cite{conf/stoc/indyk1998} similarity search techniques geared towards generic multidimensional vector data\footnote{A comprehensive survey of techniques for multidimensional vectors can be found elsewhere~\cite{book/multiD/samet2005}.}. 
+In the past few years though, we are witnessing a renewed interest in the development of approximate methods~\cite{journal/tpami/jegou2011,journal/iccv/xia2013,conf/vldb/sun14,journal/pami/babenko15,journal/corr/malkov16}. 
+
+This study is the first experimental comparison of the efficiency and accuracy of data series approximate similarity search methods ever conducted. Specifically, we evaluate the accuracy of both data series specific approximate similarity search methods, as well as that of approximate similarity search algorithms that operate on general multidimensional vectors. 
+%In addition to the approximate search techniques with no approximation guarantees that are inherently supported by some data series exact methods, 
+Moreover, we propose modifications to data series techniques in order to support approximate query answering with theoretical guarantees, following~\cite{conf/icde/Ciaccia2000}. 
+
+Our experimental evaluation covers in-memory and out-of-core experiments, the largest publicly available datasets, extensive comparison criteria, and a new set of methods that have never been compared before. 
+We thus differ from other experimental studies, which focused on the efficiency of exact search~\cite{journal/pvldb/echihabi2018}, the accuracy of dimensionality reduction techniques and similarity measures for classification tasks~\cite{journal/dmkd/Keogh2003,conf/vldb/Ding2008,DBLP:journals/datamine/BagnallLBLK17}, or in-memory high-dimensional methods~\cite{journal/tkde/li19, conf/sisap/martin17, journal/pvld/naidan2015}. 
+%We note that even though previous works report experimental evaluation results, these are not conclusive, for the following reasons: a) frequently algorithms were implemented in different programming languages, b) the experiments were conducted using different settings, datasets, platforms, hardware and tuning parameters, and c) they only compared each method to a subset of the competing methods at a time. 
+%As the long term health of any discipline depends on reproducible and experimentally validated results~\cite{journal/jss/Tichy1995}.
+In this study, we focus on the problem of \emph{approximate whole matching similarity search in collections with a very large number of data series}, i.e., similarity search that produces approximate (not exact) results, by calculating distances on the whole (not a sub-) sequence.
+This problem represents a common use case across many domains~\cite{journal/tpami/ge2014,conf/vldb/sun14,journal/pami/babenko15,journal/corr/malkov16,DBLP:conf/kdd/ColeSZ05,DBLP:conf/sigmod/ManninoA18,DBLP:conf/edbt/GogolouTPB19,Palpanas2019}. 
+%%~\cite{url:adhd,url:sds,conf/compstats/Hébrail2000,SENTINEL-2}
+
+%The experiments presented in the current paper represent 50 days of computation time, while our work involved more than 130 days of computation time in total (including initial testing and tuning of the different methods).
+
+%  	{\color{red} Mention how this relates to the curse of dimensionality per Bellman \cite{book/mit/Bellman1961}.REPHRASE "  The expression ``curse of dimensionality'' is due to Bellman and in statistics it relates to the fact that the convergence of any estimator to the true value of a smooth function defined on a space of high dimension is very slow"}
+
+\noindent{\bf Contributions.}
+Our key contributions are as follows:
+
+%1. We present a thorough discussion of the data series similarity search problem, formally defining its different variations that have been studied in the literature under diverse and conflicting names. Thus, establishing a common language that will facilitate further work in this area.
+1. We present a similarity search taxonomy that classifies methods based on the quality guarantees they provide for the search results, and that unifies the varied nomenclature used in the literature. %, thus overcoming confusion and misunderstandings.
+% and establishing a common language that will facilitate further work in this area.
+Following this taxonomy, we include a brief survey of similarity search approaches supporting approximate search, bringing together works from the data series and multidimensional data research communities.
+% , including both traditional signal processing techniques and modern specialized ones.
+%\item
+
+2. We propose a new set of approximate approaches with theoretical guarantees on accuracy and excellent empirical performance, based on modifications to the current data series exact methods.
+
+3. We evaluate all methods under a unified framework to prevent implementation bias. We used the most efficient C/C++ implementations available for all approaches, and developed from scratch in C the ones that were only implemented in other programming languages. Our new implementations are considerably faster than the original ones.
+% Moreover, we conducted a careful inspection of the code bases, and applied to all of them the same set of optimizations (e.g., with respect to memory management, Euclidean distance calculation, etc.), leading to considerably faster performance.
+%\item
+
+4. We conduct the first comprehensive experimental evaluation of the efficiency and accuracy of data series approximate similarity search approaches, using synthetic and real series and vector datasets from different domains, including the two largest vector datasets publicly available.
+%and report results for prominent solutions that had never been compared before.
+%In addition, we report the first large scale experiments with carefully crafted query workloads that include queries of varying difficulty, which can effectively stress-test all the approaches.
+The results unveil the strengths and weaknesses of each method, and lead to recommendations as to which approach to use. % given different data characteristics.
+
+5. Our results show that the methods derived from the exact data series indexing approaches generally surpass the state-of-the-art techniques for approximate search in vector spaces. 
+This observation had not been made in the past, and it paves the way for exciting new developments in the field of approximate similarity search for data series and multidimensional data at large. 
+ 
+%reveal characteristics that have not been reported in the literature, and lead to a deep understanding of the different approaches and their performance.
+%\item
+
+6. We share all source codes, datasets, and queries~\cite{url/DSSeval2}. %workloads used in our study~\cite{url/DSSeval2}. 
+%This will render our work reproducible and further help the community to agree on and establish a much needed data series similarity search benchmark~\cite{journal/dmkd/Keogh2003,conf/kdd/Zoumpatianos2015,johannesjoural2018}.
+
+%All the results, including detailed descriptions on how to reproduce them are available online~\cite{url/DSSeval}.
+%\end{itemize}
+
+%\noindent{\bf Outline.}
+%The rest of this paper is organized as follows.
+%In Section~\ref{sec:problem}, we define the problem of data series similarity search and introduce the notation used. 
+%In Section~\ref{sec:approaches}, we survey the state-of-the-art in similarity search methods and dimensionality reduction techniques. 
+%In Section~\ref{sec:experiments}, we detail the experimental framework and report and interpret our key results. In Section~\ref{sec:discussion}, we tie our key findings together in an overall synopsis. 
+%Finally, Section~\ref{sec:conclusions} highlights our key contributions and identifies future research directions.
+
+%We focus on the problem of \emph{whole matching similarity search in collections with a very large number of data series}, i.e., similarity search that produces approximate or exact results, by calculating distances on the whole (not a sub-) sequence.
+
+

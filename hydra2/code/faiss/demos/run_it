@@ -1,0 +1,4 @@
+
+./demo_opq --dataset-size 1000000 --dataset  /home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin --buffer-size 1000000 --timeseries-size 256 --mode 0 --training-size 160000 --index-key OPQ16_64,IMI2x12,PQ8+16 > index_1M_imi.out
+
+./demo_opq --queries  /home/karima/Work/Research/Data/queries_size100_seed14784_len256_znorm.bin --queries-size 100 --dataset-size 1000000 --dataset  /home/karima/Work/Research/Data/data_size1M_seed1184_len256_znorm.bin --buffer-size 1000000 --timeseries-size 256 --mode 1 --k 10 --index-key OPQ16_64,IMI2x12,PQ8+16 > queries_1M_imi.out

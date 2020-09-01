@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/karimae/projects/lernaean-hydra/hydra2/code/flann/src/cpp/flann/ext/lz4.c
+lz4.h
+/home/karimae/projects/lernaean-hydra/hydra2/code/flann/src/cpp/flann/ext/lz4.h
+intrin.h
+-
+stdlib.h
+-
+string.h
+-
+stdint.h
+-
+
+/home/karimae/projects/lernaean-hydra/hydra2/code/flann/src/cpp/flann/ext/lz4.h
+
+/home/karimae/projects/lernaean-hydra/hydra2/code/flann/src/cpp/flann/ext/lz4hc.c
+lz4hc.h
+/home/karimae/projects/lernaean-hydra/hydra2/code/flann/src/cpp/flann/ext/lz4hc.h
+lz4.c
+/home/karimae/projects/lernaean-hydra/hydra2/code/flann/src/cpp/flann/ext/lz4.c
+
+/home/karimae/projects/lernaean-hydra/hydra2/code/flann/src/cpp/flann/ext/lz4hc.h
+stddef.h
+-
+

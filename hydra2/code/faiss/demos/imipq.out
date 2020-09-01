@@ -1,0 +1,200 @@
+IMI (2,9): 262144 virtual centroids (target: 1000000 base vectors)[0.010 s] Generating 100000 vectors in 64D for training
+[0.069 s] Training the index
+Training level-1 quantizer
+IVF quantizer trains alone...
+Training IVF residual
+  Input training set too big (max size is 65536), sampling 65536 / 100000 vectors
+computing residuals
+MultiIndexQuantizer::search: 0:32768 / 65536
+MultiIndexQuantizer::search: 32768:65536 / 65536
+training 16x256 product quantizer on 65536 vectors in 64D
+Training PQ slice 0/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.05 s, search 2.03 s): objective=1329.11 imbalance=1.103 nsplit=0       
+Training PQ slice 1/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (3.08 s, search 3.03 s): objective=1333.93 imbalance=1.091 nsplit=0       
+Training PQ slice 2/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.20 s, search 2.17 s): objective=1331.02 imbalance=1.105 nsplit=0       
+Training PQ slice 3/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (3.02 s, search 2.98 s): objective=1331.53 imbalance=1.098 nsplit=0       
+Training PQ slice 4/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.32 s, search 2.26 s): objective=1330.23 imbalance=1.100 nsplit=0       
+Training PQ slice 5/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.34 s, search 2.31 s): objective=1313.88 imbalance=1.100 nsplit=0       
+Training PQ slice 6/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (1.97 s, search 1.95 s): objective=1330.07 imbalance=1.098 nsplit=0       
+Training PQ slice 7/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.02 s, search 1.98 s): objective=1327.37 imbalance=1.097 nsplit=0       
+Training PQ slice 8/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.55 s, search 2.51 s): objective=1326.37 imbalance=1.096 nsplit=0       
+Training PQ slice 9/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.40 s, search 2.37 s): objective=1325.92 imbalance=1.097 nsplit=0       
+Training PQ slice 10/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (1.95 s, search 1.93 s): objective=1332.46 imbalance=1.094 nsplit=0       
+Training PQ slice 11/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.04 s, search 2.02 s): objective=1324.87 imbalance=1.097 nsplit=0       
+Training PQ slice 12/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.76 s, search 2.72 s): objective=1324.6 imbalance=1.093 nsplit=0        
+Training PQ slice 13/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.94 s, search 2.85 s): objective=1324.96 imbalance=1.105 nsplit=0       
+Training PQ slice 14/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (1.96 s, search 1.94 s): objective=1329.79 imbalance=1.100 nsplit=0       
+Training PQ slice 15/16
+Clustering 65536 points in 4D to 256 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.00 s
+  Iteration 24 (2.02 s, search 2.00 s): objective=1321.09 imbalance=1.109 nsplit=0       
+precomputing IVFPQ tables type 2
+[98.445 s] Building a dataset of 1000000 vectors to index
+[98.928 s] Adding the vectors to the index
+ add_core times: 279.609 35.696 2.893 
+ add_core times: 235.033 33.464 2.967 
+ add_core times: 227.547 33.280 2.864 
+ add_core times: 232.942 38.467 2.774 
+ add_core times: 235.965 41.975 2.985 
+ add_core times: 247.323 37.069 3.027 
+ add_core times: 236.340 36.993 2.871 
+ add_core times: 250.697 40.262 3.159 
+ add_core times: 251.867 42.569 3.003 
+ add_core times: 249.541 33.617 3.241 
+ add_core times: 230.814 37.426 3.108 
+ add_core times: 285.351 35.761 3.353 
+ add_core times: 237.262 33.297 3.234 
+ add_core times: 230.763 51.453 3.334 
+ add_core times: 231.359 34.277 3.419 
+ add_core times: 229.863 33.333 3.340 
+ add_core times: 229.709 34.001 3.361 
+ add_core times: 228.666 33.754 3.411 
+ add_core times: 229.451 33.351 3.405 
+ add_core times: 236.345 33.509 3.536 
+ add_core times: 229.241 33.238 3.541 
+ add_core times: 228.111 33.317 3.593 
+ add_core times: 230.984 33.315 3.586 
+ add_core times: 228.081 33.439 3.640 
+ add_core times: 228.227 33.281 3.612 
+ add_core times: 247.171 39.974 3.869 
+ add_core times: 251.600 45.463 4.799 
+ add_core times: 253.342 36.138 3.749 
+ add_core times: 234.338 34.561 3.796 
+ add_core times: 230.014 33.341 3.726 
+ add_core times: 236.491 33.377 3.717 
+ add_core times: 228.854 33.416 3.666 
+ add_core times: 227.757 33.300 3.758 
+ add_core times: 227.639 33.242 3.844 
+ add_core times: 228.262 33.301 3.777 
+ add_core times: 230.979 37.517 3.772 
+ add_core times: 240.538 44.946 3.897 
+ add_core times: 231.265 34.694 3.931 
+ add_core times: 237.908 37.312 3.661 
+ add_core times: 231.721 33.624 3.833 
+ add_core times: 233.544 43.916 3.583 
+ add_core times: 253.171 53.577 3.775 
+ add_core times: 243.079 36.740 3.688 
+ add_core times: 235.195 40.683 4.083 
+ add_core times: 244.235 42.767 3.643 
+ add_core times: 313.630 55.290 6.967 
+ add_core times: 379.914 86.867 4.989 
+ add_core times: 306.252 54.487 5.989 
+ add_core times: 272.639 43.749 4.377 
+ add_core times: 277.294 48.269 3.783 
+ add_core times: 273.890 42.305 3.868 
+ add_core times: 288.400 54.523 5.055 
+ add_core times: 275.318 38.380 4.090 
+ add_core times: 237.513 35.467 4.111 
+ add_core times: 229.154 33.311 4.135 
+ add_core times: 226.886 56.544 4.776 
+ add_core times: 230.462 46.199 3.964 
+ add_core times: 279.480 38.286 4.276 
+ add_core times: 236.451 37.008 4.180 
+ add_core times: 229.180 37.533 4.071 
+ add_core times: 228.843 33.341 3.954 
+ add_core times: 236.804 33.276 4.123 
+ add_core times: 228.022 33.278 4.005 
+ add_core times: 227.472 33.403 3.977 
+ add_core times: 242.218 44.584 4.134 
+ add_core times: 230.120 33.336 3.956 
+ add_core times: 263.520 33.368 3.967 
+ add_core times: 230.301 33.357 4.103 
+ add_core times: 228.296 33.424 4.060 
+ add_core times: 228.295 33.416 4.054 
+ add_core times: 227.582 33.357 3.992 
+ add_core times: 227.637 33.351 3.935 
+ add_core times: 245.016 42.297 3.724 
+ add_core times: 282.861 52.589 3.720 
+ add_core times: 259.175 33.466 4.058 
+ add_core times: 230.868 34.262 3.851 
+ add_core times: 229.732 33.339 4.001 
+ add_core times: 237.934 33.307 3.910 
+ add_core times: 229.612 33.287 3.802 
+ add_core times: 235.544 34.249 4.131 
+ add_core times: 232.071 40.824 3.992 
+ add_core times: 230.349 33.351 4.156 
+ add_core times: 228.910 33.383 4.216 
+ add_core times: 237.528 33.299 3.978 
+ add_core times: 227.930 33.323 4.126 
+ add_core times: 228.055 33.294 4.157 
+ add_core times: 228.484 33.557 4.120 
+ add_core times: 228.602 33.554 4.099 
+ add_core times: 242.372 49.828 4.164 
+ add_core times: 235.877 33.297 4.138 
+ add_core times: 229.115 33.624 4.046 
+ add_core times: 227.723 33.314 4.037 
+ add_core times: 229.102 33.335 4.019 
+ add_core times: 228.137 33.547 4.012 
+ add_core times: 236.831 33.489 4.171 
+ add_core times: 228.581 33.319 4.010 
+ add_core times: 232.412 33.365 4.085 
+ add_core times: 228.883 33.227 4.099 
+ add_core times: 229.120 33.532 4.109 
+ add_core times: 229.647 33.246 3.964 
+[127.313 s] Searching the 5 nearest neighbors of 10 vectors in the index
+[127.328 s] Query results (vector ids, then distances):
+query  0: 8760001234 8760977526 8760632514 8760779968 8760998579 
+     dis: 0.348687 4.23858 4.45301 4.47619 4.50392 
+query  1: 8760001235 8760492166 8760665614 8760452403 8760282632 
+     dis: 0.322279 4.83742 5.09403 5.14634 5.16113 
+query  2: 8760001236 8760373627 8760337790 8760744947 8760071127 
+     dis: 0.34044 4.81114 4.88838 4.89658 4.90658 
+query  3: 8760001237 8760736667 8760135770 8760979785 8760596063 
+     dis: 0.323722 4.59005 4.73271  4.8179 4.87208 
+query  4: 8760001238 8760100764 8760694997 8760409219 8760980611 
+     dis: 0.359213 4.70154 4.87641 4.94291 5.00896 
+query  5: 8760001239 8760876528 8760764209 8760892667 8760175613 
+     dis: 0.447692 5.10002 5.26951 5.65123  5.7852 
+query  6: 8760001240 8760977780 8760187949 8760822732 8760716955 
+     dis: 0.261996 4.79803 4.87228 4.89549 5.00619 
+query  7: 8760001241 8760672375 8760410494 8760270767 8760124887 
+     dis: 0.479259 4.77293 4.80107 4.97781  5.0914 
+query  8: 8760001242 8760637526 8760851923 8760554146 8760840641 
+     dis: 0.399965 4.24435 4.69813  4.8562 4.97707 
+query  9: 8760001243 8760214677 8760325324 8760261177 8760094708 
+     dis: 0.362123 4.25406 4.52702 4.76622 4.82708 
+

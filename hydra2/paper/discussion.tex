@@ -1,0 +1,193 @@
+{\color{black}
+\section{Discussion}
+\label{sec:discussion}
+
+In the approximate NN search literature, experimental evaluations ignore the %approximate query 
+answering capabilities of data series methods. % {(\color{red}\sout{with the exception of~\cite{conf/icde/Ciaccia2000}})}. 
+%Our work 
+This is the first %in-depth 
+study that aims to fill %bridge 
+this gap. % and examine the continuum between exact and approximate query answering. 
+%Despite the fact that the tasks involved to ensure a fair and thorough comparison were difficult and time consuming, the deep insights gained from the study clearly demonstrate that the effort is worthwhile.
+%This section summarizes the most important insights gained.
+%We undertook a challenging and laborious task, where we re-implemented from scratch four algorithms: iSAX2+, SFA trie, DSTree, and VA+file, and optimized memory management problems (swapping, and out-of-memory errors) in R*-tree, M-tree, and Stepwise.
+%all methods, except for tADS+, UCR Suite, and MASS.
+%Choosing C/C++ provided considerable performance gains, but also required %low-level memory management optimizations.
+%We believe the effort involved was well worth it since the results of our experimental evaluation emphatically demonstrate the importance of the experimental setup on the relative performance of the various methods.
+%In fact, it is of paramount importance that for each method the following 6 rules are followed: a) same programming language used, b) the parameters are fine-tuned, c) the experiments are run on the same hardware and software platform, d) the type and size of the query workload is varied, e) both in-memory and out-of-memory datasets are used, and f) all relevant optimization techniques are applied.
+%To further disseminate our research results, we also make available our source code and additional plots in~\cite{url/DSSeval2}.
+%Thanks to this work, we are now able to discriminate the real value of each method, its strengths and weaknesses.
+% Our study brings to the forefront one relatively old technique, the DSTree, which thanks to its data-adaptive summarization (and our optimized implementation) wins over competing methods in many scenarios.
+%This section summarizes the lessons learned in this study.
+
+\noindent{\bf Unexpected Results.}
+%Before running experiments with the Stepwise method, we expected it to be competitive with the other approaches, particularly since it was reported to surpass sequential scan and iSAX~\cite{conf/kdd/Karras2011}.
+%For some of the algorithms our experimental evaluation revealed some unexpected results. 
+Some of the results are surprising:
+\\
+(1) \emph{Effectiveness of $\delta$.} LSH techniques (like SRS and QALSH) exploit both $\delta$ and $\epsilon$ to tune the efficiency/accuracy tradeoff. We consider that they still fall short of expectations, because for a low $\epsilon$, high values of $\delta$ still produce low MAP and low values of $\delta$ still result in slow execution (Figure~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:inmemory:hdd}). 
+In the case of our extended methods, using $\epsilon$ yielded excellent empirical results, but introducing the probabilistic stop condition based on $\delta$ was ineffective (Figures~\ref{fig:approx:accuracy_efficiency:delta:epsilon:synthetic:250GB:hdd}-d,\ref{fig:approx:accuracy_efficiency:delta:epsilon:synthetic:250GB:hdd}-e). 
+We believe that this is due to the inaccuracy of the (histogram-based) approximation of $r_{\delta}$. 
+Therefore, %interesting research directions for improving probabilistic search in exact algorithms include 
+improving the approximation of $r_{\delta}$, or devising novel approaches are interesting open research directions that will further improve the efficiency of these methods.  
+
+(2) \emph{Approximate Query Answering with Data Series Indexes Performed Better than LSH.} 
+Approximate query answering with DSTree and iSAX2+ outperfom SRS and QALSH (state-of-the-art LSH-based methods) both in space and time, while supporting better theoretical guarantees. 
+This surprising result opens up exciting research opportunities, that is, devising efficient disk-based techniques that support both $ng$-approximate and $\delta$-$\epsilon$-approximate search with top performance~\cite{conf/vldb/echihabi19}. 
+{\color{black} Note that data series indexes developed for distributed platforms~\cite{dpisax,conf/icde/zhang2019} also have the potential of outperforming LSH techniques~\cite{conf/cikm/bahmani2012,journal/pvdlb/sundaram2013} if extended following the ideas discussed in Section~\ref{sec:problem}.}
+
+%\begin{comment}
+(3) \emph{Our results vs. the literature.}
+Our results for the in-memory experiments are in-line with those reported in the literature, confirming that HNSW achieves the best accuracy/efficiency tradeoff when only query answering is considered~\cite{conf/sisap/martin17} (Figures~\ref{fig:approx:accuracy:qefficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache},~\ref{fig:approx:accuracy:qefficiency:sift:25GB:ng:hdd:100NN:100:nocache},~\ref{fig:approx:accuracy:qefficiency:deep:25GB:96:hdd:ng:100NN:100:nocache}). 
+However, when indexing time is taken into account, HNSW loses its edge to iSAX2+/DSTree for both small  (Figures~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:100:nocache},~\ref{fig:approx:accuracy:efficiency:sift:25GB:ng:hdd:100NN:100:nocache},~\ref{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:ng:100NN:100:nocache}) and large (Figures~\ref{fig:approx:accuracy:efficiency:synthetic:25GB:256:hdd:ng:100NN:10K:nocache},~\ref{fig:approx:accuracy:efficiency:sift:25GB:ng:hdd:100NN:10K:nocache},~\ref{fig:approx:accuracy:efficiency:deep:25GB:96:hdd:ng:100NN:10K:nocache}) query workloads.
+
+Our results for IMI show a dramatic decrease in accuracy, in terms of MAP and Avg\_Recall for the Sift250GB and Deep250GB datasets, while high Avg\_Recall values have been reported in the literature for the full Sift1B and Deep1B datasets~\cite{conf/cvpr/yandex16,url/faiss}. 
+We thoroughly investigated the reason behind such a discrepancy and ruled out the following factors: the Z-normalization of the Sift1B/Deep1B datasets, the size of the queries, and the number of NN. 
+We believe that our results are different for the following reasons: 
+(a) our queries return only the number of NN requested, while the smallest candidate list considered in~\cite{conf/cvpr/yandex16} is 10,000 for a 1-NN query; and (b) the results in~\cite{url/faiss} were obtained using training on a GPU with un-reported training sizes and times (we believe both were very large), while our focus was to evaluate methods on a CPU and account for training time. % in the overall index building time. 
+The difference in the accuracy results is most probably due to the fact that the training samples used in~\cite{url/faiss} were larger than the recommended numbers we used (1 million/4 million for the 25GB/250GB datasets, respectively). 
+We tried to support this claim by running experiments with different training sizes: 
+(i) we observed that increasing the training sizes for the smaller datasets improves the accuracy (the best results are reported in this study); 
+(ii) we could not run experiments on the CPU with large training sizes for the 250GB datasets, because training was very slow: we stopped the execution after 48 hours; 
+(iii) we tried a GPU-enabled server for training, but ran into a documented bug\footnote{ https://github.com/facebookresearch/faiss/issues/67}. 
+
+%arger dataseare inline with However, our results for IMI are not Different results for IMI: the benchmarks report always Recall for 1NN answer, not 100NN nor 10NN. Their autotuning is also for 1NN.
+
+%run with all optimizations: precompute tables
+%another without: no multithreading, no precomputed tables 
+
+%What is different in our experiments:
+%-queries. they use the full 10K query workload, we use 100 queries randomly generated from the 10K workload.
+%-number of NNs, we use 100NN and they only use 1NN
+%-normalized data
+%-A more rigorous accuracy measure: for 1NN benchmarks they use 1-recall@1, 1-recall@10 and 
+%1-recall@100. We use Avg\_Recall and MAP. For 1NN, MAP = Avg\_Recall =1-recall@1. 
+
+%Our results are in-line with~\cite{journal/pami/babenko15}: they use a candidate list length T, then rerank these candidates and report R@1. Their numbers for R@1 are the same as ours.
+
+
+%\end{comment}
+
+%Explain different way of calculating error: MAP, Recall, Recall@100
+%small datasets for HNSW
+%GPU (large training sizes) for IMI
+
+%Faiss: 
+%DEEP1B
+%Note that the accuracy numbers we obtain for IMI are in-line with %(https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Babenko_Efficient_Indexing_of_CVPR_2016_paper.pdf)
+%check fig 2 showing recall very low for small R. The recall values of 0.45 are with reranking which is not supported by the faiss implementation.
+
+%So either we use the original version which supports reranking or try faiss-ivf.
+%FAISS-IVF:
+%deep25GB: OPQ32_128,IVF65536_HNSW32,PQ32 --> training takes 40 hours with training size 2555904
+%and got 0.05 recall for 100NN
+%-try 1NN and see what is the recall: best is 0.05
+%-build another IVF index with a larger training set using maxtrain 0 for autotune
+%autotune gives training size of 4194304 = 256 * 2x14 for IMI, 250GB
+%autotune gives training size of 13107200 for IVF,HNSW
+
+%-use gpu for training just to prove point and : use larger training size. not possible gpu version seg faults.
+%
+%less than the ones reported in the Faiss benchmarks~\cite{url/faiss} As a coarse quantizer, we tried IMI2x11 (4M centroids), IMI2x12 (16M centroids), IVF65536\_HNSW32 and IVF262144\_HNSW32. Note that for 1M and 4M centroids we trained the vocabulary on GPU before building the index, otherwise k-means is very slow. All other operations are on CPU.
+
+%OPQ/HNSW may return -1 if not tuned properly.
+%that probabilistic nearest neighbor queries with theoretically-guaranteed sub-linear time performance and a probabilistically-bounded approximation error.
+\noindent{\bf Practicality of QALSH, IMI and HNSW.} 
+{\color{black} Although QALSH provides better accuracy than SRS, it does so at a high cost: it needs to build a different index for each desired query accuracy. This is a serious drawback, while our extended methods offer a neat alternative since the index is built once and the desired accuracy is determined at query time.} Although LSH methods (such as SRS) provide guarantees on the accuracy of search results, they are expensive both in time and space. The $ng$-approximate methods overcome these limitations. IMI and HNSW are considered the state-of-the-art in this category, and while they deliver better speed-accuracy tradeoffs than QALSH and SRS, they suffer from two major limitations: (a) having no guarantees can lead them to return incomplete result sets, for instance retrieving only a subset of the neighbors for a k-NN query and returning null values for the others; (b) they are very difficult to tune, which hinders their practicality. 
+In fact, the speed-accuracy tradeoff is not determined only at query time, but also during index building, which means that an index may need to be built many times using different parameters before finding the right speed-accuracy tradeoff. 
+This means that the optimal settings may differ across datasets, and even for different dataset sizes of the same dataset. 
+Moreover, if the analyst builds an index with a particular accuracy target, and then their needs change, they will have to rebuild the index from scratch and go through the same process of determining the right parameter values.
+
+For example, we built the IMI index for the Deep250GB dataset 8 times. 
+During each run that required over 42 hours, we varied the PQ encoding sizes, the number of centroids, and training sizes but still could not achieve the desired accuracy. 
+Regarding HNSW, we tried three different combinations of parameters (M/efConstruction = 4/500, 16/500, 48/200) for each dataset before choosing the optimal one; each run took over 40 hours on the small  Deep25GB.
+Overall, we observe that using IMI and HNSW in practice is cumbersome and time consuming. 
+Developing auto-tuning methods for these techniques is both an interesting problem and a necessity.
+
+\noindent{\bf Importance of guarantees}. 
+%Establishing guarantees on search results is extremely important as it relates to data quality, which itself is directly tied to business performance, customer service and compliance~\cite{conf/icde/saha2014,journal/bdic/hoeren2018}. 
+%In this study, we are particularly interested in one important dimension of data quality, which is data accuracy~\cite{journal/tkde/wang1995}. 
+In the approximate search literature, accuracy has been evaluated using recall, and approximation error. 
+LSH techniques are considered the state-of-the-art in approximate search with theoretically proven sublinear time performance and probabilistic guarantees on accuracy (approximation error). 
+Our results indicate that using the approximate search functionality of data series techniques provides tighter bounds than LSH (since $\delta$ can be equal to 1), and a much better performance in practice, with experimental accuracy levels well above the theoretical accuracy guarantees (Figure~\ref{fig:approx:accuracy_efficiency:delta:epsilon:synthetic:250GB:hdd}c). Note that LSH techniques can only provide probabilistic answers ($\delta < 1$), whereas our extended methods can also answer exact and $\epsilon$-approximate queries ($\delta = 1)$. 
+A promising research direction is to improve the existing guarantees on these new methods, or establish additional ones: (1) by adding guarantees on query time performance; or (2) by developing probabilistic or deterministic guarantees on the recall or MAP value of a result set, instead of the commonly used distance approximation error. 
+Remember that recall and MAP are better indicators of accuracy, because even small approximation errors may still result in low recall/MAP values (Figure~\ref{fig:approx:map:mre:sift:25GB:128:ng:hdd}). 
+
+\noindent{\bf Improvement of ng-approximate methods.}  
+Our results indicate that $ng$-approximate query answering with exact methods offers a viable alternative to existing methods, particularly because index building is much faster and query efficiency/accuracy tradeoffs can be determined at query time.
+Besides, the performance of DSTree and iSAX2+ supporting {\color{black}ng-approximate and} $\delta$-$\epsilon$-approximate search can be greatly improved by exploiting modern hardware (including SIMD vectorization, multi-cores, multi-sockets, and GPUs).
+
+%\noindent{\bf Potential for building auto-tuning methods}. 
+%Faiss IMI autotunes the search parameters to find the best recall/speed tradeoff, and recommends the best training size given an index key and dataset size. 
+%However, it does so without taking hardware requirements (CPU, GPU) or time tradeoffs into consideration. 
+%While a large training size can help build an index that provides better recall at query time, the index building time may be too long, or the available memory not enough. 
+%The most tricky and time consuming step is building the right index with the right index key given the hardware limitations. 
+%For these methods to work, they need to assist the user determine which index from the factory to use, the optimal encodings size, and the training size given the available memory, the data size/characteristics and the hardware.
+%{\bf ??? check content with karima; remove this para? ???}
+
+%\noindent{\bf Approximate Query Answering.} Approximate answers provide a viable alternative when exact solutions are not required, with many methods having a small effective error and great performance (Figure~\ref{fig:exact:data::efferror}
+%A detailed evaluation of approximate methods is part of our future work.
+
+
+%\noindent{\bf Recall@1 vs. Recall@K and MAP@K}
+
+%\noindent{\bf Accuracy vs number of kNN}
+%for OPQ, recall improves with higher k because the candidates returned are not ordered by distance (ids returned instead of distances).
+%add two plots x=k, y=recall, x=k, y=map (fixing delta and epsilon)
+
+%\noindent{\bf Batch vs single queries.}
+
+%\noindent{\bf In memory vs. out-of-core methods}
+
+\noindent{\bf Incremental approximate k-NN}. We established that, on some datasets, a kNN query incurs a much higher time cost as k increases. Therefore, a future research direction is to build $\delta$-$\epsilon$-approximate methods that support incremental search, i.e., returning the neighbors one by one as they are found. The current approaches return the k nearest neighbors all at once which impedes their interactivity. 
+
+\noindent{\bf Progressive Query Answering.} The excellent empirical results with approximate search using exact methods paves the way for another very promising research direction: progressive query answering~\cite{DBLP:conf/edbt/GogolouTPB19}. 
+New approaches can be devised to return intermediate results %for each of the k-NN neighbors 
+with increasing accuracy until the exact answers are found.
+
+\noindent{\bf Recommendations.}
+Choosing the best approach to answer an approximate similarity search query depends on a variety of factors including the accuracy desired, the dataset characteristics, the size of the query workload, the presence of an existing index and the hardware. 
+Figure~\ref{fig:recommendations} illustrates a decision matrix that recommends the best technique to use for answering a query workload using an existing index. 
+Overall, DSTree is the best performer, with the exceptions of ng-approximate queries, where iSAX2+ also exhibits excellent performance, and of in-memory datasets, where HNSW is the overall winner. 
+Accounting for index construction time as well, DSTree becomes the method of choice across the board, except for small workloads, where iSAX2+ wins.
+
+\begin{figure}[tb]
+	\captionsetup{justification=centering}
+	\includegraphics[width =\columnwidth]{{100_approx_queries_decision_matrix.pdf}}
+	\vspace*{-0.5cm}
+	\caption{Recommendations (query answering).		
+	\vspace*{-0.3cm}
+		}
+	\label{fig:recommendations}
+\end{figure}
+
+}
+\begin{comment}
+\begin{table*}[!htb]
+	\scriptsize
+%	\centering
+%	\begin{tabular*}{\linewidth}{|*{6}{c|}} 		
+	\begin{tabular*}{\columnwidth}{|*{6}{c|}} 		
+		 \hhline{~~----}		 			 	    
+		\multicolumn{1}{c}{}& &
+		 \multicolumn{4}{c|}{Data Series Length}  & \hhline{~-----}		 			 
+		\multicolumn{1}{c|}{}&\multicolumn{1}{c|}{Dataset Size} & 128 & 256 & 2048 & 16384   \\ 		
+		\hhline{------}		 			 
+		\multicolumn{1}{|c}{\multirow{2}{*}{{ In-Memory }}}
+		\multicolumn{1}{c}{}&\multicolumn{1}{|c|}{25GB} & iSAX2+  &  iSAX2+ & ADS+  &  ADS+	\\ 	
+		\hhline{~-----}		 			 		
+		\multicolumn{1}{|c}{}&\multicolumn{1}{|c|}{50GB} &   iSAX2+/DSTree &  iSAX2+/DSTree & ADS+  & ADS+ \\
+		\hhline{------}		 			 		
+		\multicolumn{1}{|c}{\multirow{2}{*}{{ Disk-Resident }}}
+l		\multicolumn{1}{c}{}&\multicolumn{1}{|c|}{100GB} &  DSTree &  DSTree & ADS+/DSTree &  ADS+\\
+		\hhline{~-----}		 			 
+		\multicolumn{1}{|c}{}&\multicolumn{1}{|c|}{250GB} &  &  DSTree &  &  \\
+		\hhline{------}		 			 
+	\end{tabular*}
+	%\centering
+	\caption{Recommendations}
+	\label{tab:recommendations}
+\end{table*}
+\end{comment}
+
+
