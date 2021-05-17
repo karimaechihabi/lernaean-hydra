@@ -146,12 +146,12 @@ void generate_random_timeseries(int length, int number_of_timeseries,
 
         for(rep=0; rep<repetition; rep++)
         {
-  	    //fwrite(ts, sizeof(float), length,data_file);
+  	    fwrite(ts, sizeof(float), length,data_file);
            
-             for(j=0; j<length; j++) {
-                 fprintf (data_file,"%g ", ts[j]);
-             }
-             fprintf(data_file,"\n");
+            // for(j=0; j<length; j++) {
+            //     fprintf (data_file,"%g ", ts[j]);
+            // }
+            // fprintf(data_file,"\n");
         }
 
         if(i % (1000 * repetition) == 0) {
